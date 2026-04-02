@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IBSH Admin - Student Leave Management</title>
+<script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="shared-db.js"></script>
+<style>
+/* ── Reset & Base ───────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1f5fb8;--primary-light:#2d7ce4;--primary-lighter:#69aafc;
+  --accent:#2f73f1;--accent-hover:#1f5cd0;
+  --bg:#eef7ff;--card:rgba(255,255,255,.96);--border:#d6e6f7;
+  --text:#163355;--text-secondary:#47627f;--text-muted:#6f87a2;
+  --success:#1c9a52;--success-bg:#e5f9ed;
+  --danger:#d94a4a;--danger-bg:#ffe9e9;
+  --warning:#d88a15;--warning-bg:#fff4d8;
+  --info:#2563eb;--info-bg:#e1eeff;
+  --sidebar-w:252px;--header-h:68px;
+  --radius:16px;--shadow:0 12px 34px rgba(39,91,151,.10);
+  --shadow-lg:0 24px 48px rgba(39,91,151,.16);
+}
+html{font-size:16px}
+body{font-family:"Segoe UI","Noto Sans TC",-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#dff1ff 0%,#f8fbff 46%,#fff5e8 100%);color:var(--text);min-height:100vh;display:flex}
+a{color:var(--accent);text-decoration:none}
+button{cursor:pointer;font-family:inherit;font-size:.95rem}
+input,select,textarea{font-family:inherit;font-size:.95rem}
+table{border-collapse:collapse;width:100%}
+
+/* ── Sidebar ────────────────────────────────────────────────────── */
+.sidebar{
+  width:var(--sidebar-w);min-height:100vh;background:linear-gradient(180deg,#2364bd 0%,#2d74d3 100%);
+  color:#fff;display:flex;flex-direction:column;position:fixed;left:0;top:0;
+  z-index:100;transition:transform .25s ease;box-shadow:18px 0 38px rgba(27,74,128,.16);
+}
+.sidebar-brand{padding:22px 24px;font-size:1.28rem;font-weight:700;border-bottom:1px solid rgba(255,255,255,.15);display:flex;align-items:center;gap:8px}
+.sidebar-brand span{font-size:.84rem;font-weight:500;opacity:.82}
+.sidebar-nav{flex:1;padding:18px 0}
+.sidebar-nav button{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:14px 24px;background:none;border:none;color:rgba(255,255,255,.82);
+  font-size:1rem;text-align:left;transition:all .15s;
+}
+.sidebar-nav button:hover{background:rgba(255,255,255,.12);color:#fff}
+.sidebar-nav button.active{background:rgba(255,255,255,.18);color:#fff;font-weight:700;border-left:4px solid #d6e7ff}
+.sidebar-nav button .icon{width:22px;text-align:center;font-size:1.05rem}
+.sidebar-footer{padding:14px 24px;border-top:1px solid rgba(255,255,255,.12);font-size:.84rem;opacity:.68}
+
+/* ── Hamburger (mobile) ─────────────────────────────────────────── */
+.hamburger{display:none;position:fixed;top:12px;left:12px;z-index:200;background:var(--primary);color:#fff;border:none;border-radius:10px;padding:9px 12px;font-size:1.25rem;box-shadow:var(--shadow)}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:90}
+
+/* ── Main ───────────────────────────────────────────────────────── */
+.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.topbar{height:var(--header-h);background:rgba(255,255,255,.74);border-bottom:1px solid rgba(214,230,247,.85);display:flex;align-items:center;padding:0 30px;position:sticky;top:0;z-index:50;backdrop-filter:blur(14px)}
+.topbar h1{font-size:1.35rem;font-weight:700;letter-spacing:.01em}
+.content{padding:30px;flex:1}
+
+/* ── Cards & Grids ──────────────────────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:28px}
+.stat-card{background:linear-gradient(180deg,rgba(255,255,255,.98) 0%,rgba(245,250,255,.95) 100%);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);border:1px solid rgba(214,230,247,.82);border-left:5px solid var(--accent)}
+.stat-card .label{font-size:.96rem;color:var(--text-muted);margin-bottom:8px}
+.stat-card .value{font-size:2.2rem;font-weight:800;color:var(--primary)}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:22px;overflow:hidden;border:1px solid rgba(214,230,247,.78)}
+.card-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;background:linear-gradient(180deg,rgba(245,250,255,.95) 0%,rgba(255,255,255,.88) 100%)}
+.card-header h2{font-size:1.12rem;font-weight:700}
+.card-body{padding:24px}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:10px;border:1px solid transparent;font-weight:600;transition:all .15s;box-shadow:0 2px 0 rgba(0,0,0,.03)}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-hover)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#15803d}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-warning{background:var(--warning);color:#fff}.btn-warning:hover{background:#b45309}
+.btn-outline{background:rgba(255,255,255,.92);border-color:var(--border);color:var(--text)}.btn-outline:hover{background:#f4f9ff}
+.btn-sm{padding:7px 12px;font-size:.88rem}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ── Forms ───────────────────────────────────────────────────────── */
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-weight:700;margin-bottom:6px;font-size:.95rem;color:var(--text-secondary)}
+.form-control{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;transition:border .15s, box-shadow .15s}
+.form-control:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px rgba(47,115,241,.12)}
+textarea.form-control{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* ── Tables ──────────────────────────────────────────────────────── */
+.table-wrap{overflow-x:auto;border:1px solid rgba(214,230,247,.8);border-radius:14px;background:#fff}
+table th{background:#f2f8ff;position:sticky;top:0;font-weight:700;font-size:.82rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+table th,table td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--border);font-size:.96rem}
+table tbody tr:hover{background:#edf5ff}
+table tbody tr:nth-child(even){background:#fbfdff}
+table tbody tr:nth-child(even):hover{background:#edf5ff}
+
+/* ── Badges ──────────────────────────────────────────────────────── */
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600}
+.badge-pending{background:var(--warning-bg);color:var(--warning)}
+.badge-approved{background:var(--success-bg);color:var(--success)}
+.badge-rejected{background:var(--danger-bg);color:var(--danger)}
+.badge-info{background:var(--info-bg);color:var(--info)}
+
+/* ── Modal ───────────────────────────────────────────────────────── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border-radius:18px;width:90%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);border:1px solid rgba(255,255,255,.8)}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,rgba(245,250,255,.95) 0%,rgba(255,255,255,.88) 100%)}
+.modal-header h3{font-size:1.12rem;font-weight:700}
+.modal-close{background:none;border:none;font-size:1.3rem;color:var(--text-muted);padding:4px}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+
+/* ── Toast ───────────────────────────────────────────────────────── */
+.toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:14px 20px;border-radius:12px;color:#fff;font-size:.94rem;box-shadow:var(--shadow-lg);animation:slideIn .3s ease;min-width:280px}
+.toast-success{background:var(--success)}
+.toast-error{background:var(--danger)}
+.toast-info{background:var(--info)}
+@keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── Section visibility ──────────────────────────────────────────── */
+.section{display:none}
+.section.active{display:block}
+
+/* ── Search bar ──────────────────────────────────────────────────── */
+.search-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.search-bar input,.search-bar select{padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:#fff}
+.search-bar input:focus,.search-bar select:focus{outline:none;border-color:var(--accent)}
+
+/* ── Preview table ───────────────────────────────────────────────── */
+.preview-area{max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:12px;margin:12px 0;background:#fff}
+
+/* ── Checkbox row ────────────────────────────────────────────────── */
+.check-row{display:flex;align-items:center;gap:6px}
+.check-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+
+/* ── Cross-ref results ───────────────────────────────────────────── */
+.crossref-result{padding:12px;border-radius:8px;margin-top:12px}
+.crossref-result.found{background:var(--success-bg);border:1px solid var(--success)}
+.crossref-result.missing{background:var(--danger-bg);border:1px solid var(--danger)}
+
+/* ── Holiday calendar ────────────────────────────────────────────── */
+.holiday-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.holiday-item{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 14px;background:var(--bg);border-radius:6px;border-left:3px solid var(--accent)}
+.holiday-item .hi-date{font-weight:600;font-size:.85rem;min-width:150px;line-height:1.35}
+.holiday-item .hi-meta{flex:1;display:flex;flex-direction:column;gap:4px}
+.holiday-item .hi-name{flex:1;margin:0}
+.holiday-item .hi-type{font-size:.75rem;color:var(--text-muted)}
+.holiday-item .hi-actions{display:flex;align-items:center}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay.open{display:block}
+  .hamburger{display:block}
+  .main{margin-left:0}
+  .form-row,.form-row-3{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .content{padding:22px 16px}
+  .topbar{padding:0 18px}
+}
+</style>
+</head>
+<body>
+
+<!-- Hamburger -->
+<button class="hamburger" onclick="toggleSidebar()">&#9776;</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">IBSH Admin <span>Leave System</span></div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <button class="active" data-section="dashboard"><span class="icon">&#127968;</span> Dashboard</button>
+    <button data-section="students"><span class="icon">&#128101;</span> Student Management</button>
+    <button data-section="leaves"><span class="icon">&#128196;</span> Leave Management</button>
+    <button data-section="tardies"><span class="icon">&#9200;</span> Tardy Management</button>
+    <button data-section="settings"><span class="icon">&#9881;</span> Settings</button>
+  </nav>
+  <div class="sidebar-footer">IBSH &copy; 2025</div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <h1 id="topbarTitle">Dashboard</h1>
+  </div>
+  <div class="content">
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SECTION: Dashboard
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section active" id="sec-dashboard">
+      <p style="margin-bottom:16px;color:var(--text-secondary)">Today: <strong id="dashDate"></strong></p>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">Total Students</div><div class="value" id="dashTotalStudents">0</div></div>
+        <div class="stat-card" style="border-color:var(--warning)"><div class="label">Pending Leaves</div><div class="value" id="dashPendingLeaves">0</div></div>
+        <div class="stat-card" style="border-color:var(--danger)"><div class="label">Today's Tardies</div><div class="value" id="dashTodayTardies">0</div></div>
+        <div class="stat-card" style="border-color:var(--success)"><div class="label">Today's Approved</div><div class="value" id="dashTodayLeaves">0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Today's Late Arrivals</h2></div>
+        <div class="card-body table-wrap" id="dashTardyTable"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Today's Leave Records</h2></div>
+        <div class="card-body table-wrap" id="dashLeaveTable"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SECTION: Student Management
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-students">
+      <div class="card">
+        <div class="card-header">
+          <h2>Students</h2>
+          <div class="btn-group">
+            <button class="btn btn-primary btn-sm" onclick="showAddStudentModal()">+ Add Student</button>
+            <button class="btn btn-outline btn-sm" onclick="showImportModal()">Import CSV / Excel</button>
+            <button class="btn btn-danger btn-sm" id="btnDeleteSelectedStudents" onclick="bulkDeleteStudents()" disabled>Delete Selected</button>
+            <button class="btn btn-warning btn-sm" onclick="showGradeAdjustModal()">Grade Adjustment</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="search-bar" style="margin-bottom:14px">
+            <input type="text" id="studentSearch" placeholder="Search name, student no., class..." oninput="renderStudents()" style="flex:1;min-width:200px">
+            <select id="studentClassFilter" onchange="renderStudents()"><option value="">All Classes</option></select>
+          </div>
+          <div class="table-wrap" id="studentTableWrap"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SECTION: Leave Management
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-leaves">
+      <div class="card">
+        <div class="card-header">
+          <h2>Pending Approvals</h2>
+          <div class="btn-group">
+            <button class="btn btn-success btn-sm" onclick="bulkApproveLeaves()">Approve Selected</button>
+            <button class="btn btn-danger btn-sm" onclick="bulkRejectLeaves()">Reject Selected</button>
+          </div>
+        </div>
+        <div class="card-body table-wrap" id="pendingLeavesTable"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>Approved Leaves</h2>
+          <div class="search-bar">
+            <input type="date" id="leaveFilterFrom"> <span>to</span> <input type="date" id="leaveFilterTo">
+            <select id="leaveClassFilter"><option value="">All Classes</option></select>
+            <button class="btn btn-outline btn-sm" onclick="renderAllLeaves()">Filter</button>
+          </div>
+        </div>
+        <div class="card-body table-wrap" id="approvedLeavesTable"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>Rejected Leaves</h2>
+        </div>
+        <div class="card-body table-wrap" id="rejectedLeavesTable"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SECTION: Tardy Management
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-tardies">
+      <div class="card">
+        <div class="card-header"><h2>Today's Tardy Records</h2></div>
+        <div class="card-body table-wrap" id="tardyTodayTable"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Cross-Reference Check (交叉比對)</h2></div>
+        <div class="card-body">
+          <p style="margin-bottom:8px;color:var(--text-secondary)">Paste student numbers from teacher attendance (one per line or comma-separated). The system will show who has NOT submitted a tardy form today.</p>
+          <textarea class="form-control" id="crossRefInput" rows="5" placeholder="e.g.&#10;11001&#10;11002&#10;11003"></textarea>
+          <button class="btn btn-primary" style="margin-top:10px" onclick="doCrossReference()">Compare</button>
+          <div id="crossRefResults"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SECTION: Settings
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-settings">
+      <div class="card">
+        <div class="card-header"><h2>System Settings</h2></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label>Current School Year (e.g. 114)</label>
+            <input type="text" class="form-control" id="settingSchoolYear" style="max-width:200px">
+          </div>
+          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>Holiday Calendar</h2>
+          <div class="btn-group">
+            <button class="btn btn-primary btn-sm" onclick="showAddHolidayModal()">+ Add Holiday / Range</button>
+            <button class="btn btn-outline btn-sm" onclick="syncGoogleCalendar()">Sync Google Calendar</button>
+            <select id="gcalYear" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:.85rem"></select>
+          </div>
+        </div>
+        <div class="card-body">
+          <p style="margin-bottom:12px;color:var(--text-muted);font-size:.92rem">Weekends are already treated as non-school days. Add only school holidays or special break ranges here.</p>
+          <div class="holiday-list" id="holidayList"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Export Data</h2></div>
+        <div class="card-body">
+          <div class="form-row" style="margin-bottom:16px">
+            <div class="form-group"><label>From Date</label><input type="date" class="form-control" id="exportFrom"></div>
+            <div class="form-group"><label>To Date</label><input type="date" class="form-control" id="exportTo"></div>
+          </div>
+          <div class="btn-group" style="margin-bottom:20px">
+            <button class="btn btn-primary" onclick="previewExport('leaves')">Preview Leave Records</button>
+            <button class="btn btn-primary" onclick="previewExport('tardies')">Preview Tardy Records</button>
+          </div>
+          <div id="exportPreview"></div>
+          <div class="btn-group" style="margin-top:12px;display:none" id="exportActions">
+            <button class="btn btn-success" onclick="downloadExport('leaves')">Download Leave CSV</button>
+            <button class="btn btn-success" onclick="downloadExport('tardies')">Download Tardy CSV</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Data Management</h2></div>
+        <div class="card-body">
+          <p style="margin-bottom:12px;color:var(--text-muted);font-size:.85rem">Danger zone: these actions cannot be undone.</p>
+          <div class="btn-group">
+            <button class="btn btn-danger btn-sm" onclick="confirmClear('students')">Clear All Students</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmClear('leaves')">Clear All Leaves</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmClear('tardies')">Clear All Tardies</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ Modal: Add/Edit Student ═══ -->
+<div class="modal-overlay" id="modalStudent">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modalStudentTitle">Add Student</h3><button class="modal-close" onclick="closeModal('modalStudent')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="editStudentId">
+      <div class="form-row">
+        <div class="form-group"><label>Chinese Name</label><input class="form-control" id="fStudentCName"></div>
+        <div class="form-group"><label>English Name</label><input class="form-control" id="fStudentEName"></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label>Student No.</label><input class="form-control" id="fStudentNo"></div>
+        <div class="form-group"><label>Class</label><input class="form-control" id="fStudentClass" placeholder="e.g. G7A"></div>
+        <div class="form-group"><label>Seat No.</label><input class="form-control" id="fStudentSeat" type="number"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modalStudent')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStudent()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Modal: Import Students ═══ -->
+<div class="modal-overlay" id="modalImport">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header"><h3>Import Students</h3><button class="modal-close" onclick="closeModal('modalImport')">&times;</button></div>
+    <div class="modal-body">
+      <p style="margin-bottom:8px;color:var(--text-secondary);font-size:.85rem">Paste tab-separated / CSV data, or choose a <strong>.csv</strong> or <strong>.xlsx</strong> file. Expected columns: <strong>Chinese Name, Student No., Class, Seat No., English Name</strong></p>
+      <div class="form-group" style="margin-bottom:10px">
+        <label for="importFile">Choose CSV / Excel File</label>
+        <input class="form-control" id="importFile" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="handleImportFile(event)">
+        <div id="importSourceInfo" style="margin-top:6px;color:var(--text-muted);font-size:.8rem"></div>
+      </div>
+      <p style="margin-bottom:8px;color:var(--text-muted);font-size:.8rem">You can also <a href="list.xlsx" download>download the sample Excel template</a>.</p>
+      <textarea class="form-control" id="importData" rows="8" placeholder="Chinese Name,Student No.,Class,Seat No.,English Name&#10;王小明,11001,G7A,1,Wang Xiaoming&#10;李小華,11002,G7A,2,Li Xiaohua"></textarea>
+      <button class="btn btn-outline" style="margin-top:8px" onclick="previewImport()">Preview</button>
+      <div class="preview-area" id="importPreview" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modalImport')">Cancel</button>
+      <button class="btn btn-success" id="btnConfirmImport" onclick="confirmImport()" disabled>Confirm Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Modal: Grade Adjustment ═══ -->
+<div class="modal-overlay" id="modalGradeAdj">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header"><h3>Year / Grade Adjustment</h3><button class="modal-close" onclick="closeModal('modalGradeAdj')">&times;</button></div>
+    <div class="modal-body">
+      <p style="margin-bottom:12px;color:var(--text-secondary);font-size:.85rem">Advance all students by one grade level for the new school year. Classes like G7A become G8A, etc.</p>
+      <div class="form-group">
+        <label>Remove Graduated Grade (optional)</label>
+        <input class="form-control" id="fRemoveGrade" placeholder="e.g. G12 (removes all G12 students)" style="max-width:200px">
+      </div>
+      <button class="btn btn-warning" onclick="advanceGrades()">Advance All Grades by 1</button>
+      <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
+      <p style="margin-bottom:8px;font-weight:600;font-size:.85rem">Custom Mapping</p>
+      <p style="margin-bottom:8px;color:var(--text-muted);font-size:.8rem">One mapping per line: OldClass &rarr; NewClass</p>
+      <textarea class="form-control" id="fCustomMapping" rows="5" placeholder="G7A -> G8A&#10;G7B -> G8B&#10;G11A -> G12A"></textarea>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="applyCustomMapping()">Apply Custom Mapping</button>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modalGradeAdj')">Close</button></div>
+  </div>
+</div>
+
+<!-- ═══ Modal: Add Holiday ═══ -->
+<div class="modal-overlay" id="modalHoliday">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><h3>Add Holiday / Range</h3><button class="modal-close" onclick="closeModal('modalHoliday')">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Start Date</label><input type="date" class="form-control" id="fHolidayStartDate"></div>
+        <div class="form-group"><label>End Date</label><input type="date" class="form-control" id="fHolidayEndDate"></div>
+      </div>
+      <p style="margin-bottom:12px;color:var(--text-muted);font-size:.8rem">Leave end date blank for a single-day holiday.</p>
+      <div class="form-group"><label>Name</label><input class="form-control" id="fHolidayName" placeholder="e.g. National Day"></div>
+      <div class="form-group"><label>Type</label>
+        <select class="form-control" id="fHolidayType"><option value="national">National</option><option value="manual">Custom</option></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modalHoliday')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveHoliday()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Confirm Modal ═══ -->
+<div class="modal-overlay" id="modalConfirm">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><h3>Confirm</h3><button class="modal-close" onclick="closeModal('modalConfirm')">&times;</button></div>
+    <div class="modal-body"><p id="confirmMsg"></p></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modalConfirm')">Cancel</button>
+      <button class="btn btn-danger" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   IBSH Admin – Main Script
+   ═══════════════════════════════════════════════════════════════════ */
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+let _selectedStudentIds = new Set();
+
+// ── Helpers ──────────────────────────────────────────────────────
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = msg;
+  $('#toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function toggleSidebar() {
+  $('#sidebar').classList.toggle('open');
+  $('#sidebarOverlay').classList.toggle('open');
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function statusBadge(status) {
+  const cls = status === 'pending' ? 'badge-pending' : status === 'approved' ? 'badge-approved' : 'badge-rejected';
+  return `<span class="badge ${cls}">${escapeHtml(status)}</span>`;
+}
+
+// ── Navigation ───────────────────────────────────────────────────
+const navTitles = {
+  dashboard: 'Dashboard',
+  students: 'Student Management (學生管理)',
+  leaves: 'Leave Management (假單管理)',
+  tardies: 'Tardy Management (遲到管理)',
+  settings: 'Settings (設定)',
+};
+
+function switchSection(name) {
+  $$('.section').forEach(s => s.classList.remove('active'));
+  $(`#sec-${name}`).classList.add('active');
+  $$('.sidebar-nav button').forEach(b => b.classList.remove('active'));
+  $$(`.sidebar-nav button[data-section="${name}"]`).forEach(b => b.classList.add('active'));
+  $('#topbarTitle').textContent = navTitles[name] || name;
+  // Refresh section data
+  refreshSection(name);
+  // Close mobile sidebar
+  $('#sidebar').classList.remove('open');
+  $('#sidebarOverlay').classList.remove('open');
+}
+
+$$('.sidebar-nav button').forEach(btn => {
+  btn.addEventListener('click', () => switchSection(btn.dataset.section));
+});
+
+function refreshSection(name) {
+  switch (name) {
+    case 'dashboard': refreshDashboard(); break;
+    case 'students': refreshStudents(); break;
+    case 'leaves': refreshLeaves(); break;
+    case 'tardies': refreshTardies(); break;
+    case 'settings': refreshSettings(); break;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════
+function refreshDashboard() {
+  const d = today();
+  $('#dashDate').textContent = d;
+  $('#dashTotalStudents').textContent = AppDB.students().length;
+  $('#dashPendingLeaves').textContent = AppDB.getPendingLeaves().length;
+
+  const todayTardies = AppDB.getTardiesByDate(d);
+  $('#dashTodayTardies').textContent = todayTardies.length;
+
+  const todayLeaves = AppDB.getLeavesByDate(d);
+  const todayApprovedLeaves = todayLeaves.filter(l => l.status === 'approved');
+  $('#dashTodayLeaves').textContent = todayApprovedLeaves.length;
+
+  // Tardy table
+  renderTardyTable('dashTardyTable', todayTardies);
+
+  // Leave table — only show approved leaves on dashboard
+  const approvedLeaves = todayLeaves.filter(l => l.status === 'approved');
+  if (approvedLeaves.length === 0) {
+    $('#dashLeaveTable').innerHTML = '<p style="color:var(--text-muted)">No approved leave records today.</p>';
+  } else {
+    let h = '<table><thead><tr><th>Class</th><th>Student</th><th>Type</th><th>From</th><th>To</th><th>Period</th></tr></thead><tbody>';
+    approvedLeaves.forEach(l => {
+      h += `<tr><td>${escapeHtml(l.className)}</td><td>${escapeHtml(l.chineseName || l.englishName)}</td><td>${escapeHtml(l.leaveType)}</td><td>${escapeHtml(l.fromTime || '')}</td><td>${escapeHtml(l.toTime || '')}</td><td>${l.periods || '-'}</td></tr>`;
+    });
+    h += '</tbody></table>';
+    $('#dashLeaveTable').innerHTML = h;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STUDENT MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════
+function refreshStudents() {
+  populateClassFilters();
+  renderStudents();
+}
+
+function pruneStudentSelection() {
+  const validIds = new Set(AppDB.students().map(s => s.id));
+  [..._selectedStudentIds].forEach(id => {
+    if (!validIds.has(id)) _selectedStudentIds.delete(id);
+  });
+}
+
+function getVisibleStudentCheckboxes() {
+  return [...$$('.student-cb')];
+}
+
+function syncStudentSelectionUi() {
+  const checkboxes = getVisibleStudentCheckboxes();
+  const visibleIds = checkboxes.map(cb => cb.value);
+  const checkedCount = visibleIds.filter(id => _selectedStudentIds.has(id)).length;
+  const master = $('#studentMasterCb');
+  if (master) {
+    master.checked = visibleIds.length > 0 && checkedCount === visibleIds.length;
+    master.indeterminate = checkedCount > 0 && checkedCount < visibleIds.length;
+  }
+  checkboxes.forEach(cb => {
+    cb.checked = _selectedStudentIds.has(cb.value);
+  });
+
+  const deleteBtn = $('#btnDeleteSelectedStudents');
+  if (deleteBtn) {
+    deleteBtn.disabled = _selectedStudentIds.size === 0;
+    deleteBtn.textContent = _selectedStudentIds.size === 0 ? 'Delete Selected' : `Delete Selected (${_selectedStudentIds.size})`;
+  }
+}
+
+function toggleStudentSelection(id, checked) {
+  if (checked) _selectedStudentIds.add(id);
+  else _selectedStudentIds.delete(id);
+  syncStudentSelectionUi();
+}
+
+function toggleAllStudents(master) {
+  getVisibleStudentCheckboxes().forEach(cb => {
+    cb.checked = master.checked;
+    const id = cb.value;
+    if (master.checked) _selectedStudentIds.add(id);
+    else _selectedStudentIds.delete(id);
+  });
+  syncStudentSelectionUi();
+}
+
+async function bulkDeleteStudents() {
+  const ids = [..._selectedStudentIds];
+  if (ids.length === 0) {
+    toast('Select at least one student.', 'error');
+    return;
+  }
+  showConfirm(`Delete ${ids.length} selected student(s)? This cannot be undone.`, async () => {
+    await Promise.all(ids.map(id => AppDB.removeStudent(id)));
+    _selectedStudentIds.clear();
+    toast(`${ids.length} student(s) deleted.`);
+    refreshStudents();
+  });
+}
+
+function populateClassFilters() {
+  const classes = AppDB.getClassList();
+  const opts = '<option value="">All Classes</option>' + classes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  $('#studentClassFilter').innerHTML = opts;
+  $('#leaveClassFilter').innerHTML = opts;
+}
+
+function renderStudents() {
+  pruneStudentSelection();
+  const search = ($('#studentSearch').value || '').toLowerCase();
+  const cls = $('#studentClassFilter').value;
+  let list = AppDB.students();
+  if (cls) list = list.filter(s => s.className === cls);
+  if (search) list = list.filter(s =>
+    (s.chineseName || '').toLowerCase().includes(search) ||
+    (s.englishName || '').toLowerCase().includes(search) ||
+    (s.studentNo || '').toLowerCase().includes(search) ||
+    (s.className || '').toLowerCase().includes(search)
+  );
+  // Sort by class then seat
+  list.sort((a, b) => AppDB.compareClassNames(a.className, b.className) || (parseInt(a.seatNo, 10) || 0) - (parseInt(b.seatNo, 10) || 0));
+
+  if (list.length === 0) {
+    $('#studentTableWrap').innerHTML = '<p style="color:var(--text-muted)">No students found.</p>';
+    syncStudentSelectionUi();
+    return;
+  }
+  let h = '<table><thead><tr><th><input type="checkbox" id="studentMasterCb" onclick="toggleAllStudents(this)"></th><th>Class</th><th>Seat</th><th>Student No.</th><th>Chinese Name</th><th>English Name</th><th>Email</th><th>Actions</th></tr></thead><tbody>';
+  list.forEach(s => {
+    const checkedAttr = _selectedStudentIds.has(s.id) ? ' checked' : '';
+    h += `<tr>
+      <td><input type="checkbox" class="student-cb" value="${escapeHtml(s.id)}"${checkedAttr} onclick="toggleStudentSelection(this.value, this.checked)"></td>
+      <td>${escapeHtml(s.className)}</td><td>${escapeHtml(s.seatNo)}</td><td>${escapeHtml(s.studentNo)}</td>
+      <td>${escapeHtml(s.chineseName)}</td><td>${escapeHtml(s.englishName)}</td><td>${escapeHtml(s.email)}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick='editStudent(${JSON.stringify(s.id)})'>Edit</button>
+        <button class="btn btn-danger btn-sm" onclick='deleteStudent(${JSON.stringify(s.id)})'>Delete</button>
+      </td></tr>`;
+  });
+  h += '</tbody></table>';
+  $('#studentTableWrap').innerHTML = h;
+  syncStudentSelectionUi();
+}
+
+function showAddStudentModal() {
+  $('#modalStudentTitle').textContent = 'Add Student';
+  $('#editStudentId').value = '';
+  $('#fStudentCName').value = '';
+  $('#fStudentEName').value = '';
+  $('#fStudentNo').value = '';
+  $('#fStudentClass').value = '';
+  $('#fStudentSeat').value = '';
+  openModal('modalStudent');
+}
+
+function editStudent(id) {
+  const s = AppDB.students().find(x => x.id === id);
+  if (!s) return;
+  $('#modalStudentTitle').textContent = 'Edit Student';
+  $('#editStudentId').value = s.id;
+  $('#fStudentCName').value = s.chineseName;
+  $('#fStudentEName').value = s.englishName;
+  $('#fStudentNo').value = s.studentNo;
+  $('#fStudentClass').value = s.className;
+  $('#fStudentSeat').value = s.seatNo;
+  openModal('modalStudent');
+}
+
+async function saveStudent() {
+  const id = $('#editStudentId').value;
+  const data = {
+    chineseName: $('#fStudentCName').value.trim(),
+    englishName: $('#fStudentEName').value.trim(),
+    studentNo: $('#fStudentNo').value.trim(),
+    className: $('#fStudentClass').value.trim(),
+    seatNo: $('#fStudentSeat').value.trim(),
+  };
+  if (!data.chineseName || !data.studentNo || !data.className) {
+    toast('Chinese Name, Student No., and Class are required.', 'error');
+    return;
+  }
+  try {
+    if (id) {
+      await AppDB.updateStudent(id, data);
+      toast('Student updated.');
+    } else {
+      await AppDB.addStudent(data);
+      toast('Student added.');
+    }
+    closeModal('modalStudent');
+    refreshStudents();
+  } catch (err) {
+    console.error('[Admin] Failed to save student:', err);
+    toast(err.message || 'Failed to save student.', 'error');
+  }
+}
+
+function deleteStudent(id) {
+  const student = AppDB.students().find(s => s.id === id);
+  const name = student ? student.chineseName || student.englishName || student.studentNo : '';
+  showConfirm(`Delete student "${name}"? This cannot be undone.`, async () => {
+    await AppDB.removeStudent(id);
+    _selectedStudentIds.delete(id);
+    toast('Student deleted.');
+    refreshStudents();
+  });
+}
+
+// ── Import ───────────────────────────────────────────────────────
+let _importRows = [];
+const IMPORT_HEADER_ALIASES = {
+  chineseName: ['chinesename', 'name', 'studentname', '中文姓名', '中文名', '姓名', '學生姓名', '学生姓名'],
+  studentNo: ['studentno', 'studentnumber', 'studentid', 'id', '學號', '学号', '學生編號', '学生编号'],
+  className: ['class', 'classname', '班級', '班级'],
+  seatNo: ['seat', 'seatno', 'seatnumber', '座號', '座号'],
+  englishName: ['englishname', 'english', '英文姓名', '英文名']
+};
+
+function showImportModal() {
+  $('#importData').value = '';
+  $('#importFile').value = '';
+  $('#importSourceInfo').textContent = '';
+  $('#importPreview').style.display = 'none';
+  $('#importPreview').innerHTML = '';
+  $('#btnConfirmImport').disabled = true;
+  _importRows = [];
+  openModal('modalImport');
+}
+
+function resetImportPreview() {
+  $('#importPreview').style.display = 'none';
+  $('#importPreview').innerHTML = '';
+  $('#btnConfirmImport').disabled = true;
+}
+
+function cleanImportCell(value) {
+  if (value == null) return '';
+  return String(value)
+    .replace(/\uFEFF/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\r?\n/g, ' ')
+    .trim();
+}
+
+function normalizeImportValue(value, field) {
+  let text = cleanImportCell(value);
+  if ((field === 'studentNo' || field === 'seatNo') && /^-?\d+\.0+$/.test(text)) {
+    text = text.replace(/\.0+$/, '');
+  }
+  return text;
+}
+
+function normalizeImportHeader(value) {
+  return cleanImportCell(value).toLowerCase().replace(/[.\s_\-\/()]+/g, '');
+}
+
+function buildImportHeaderMap(headerRow) {
+  const map = {};
+  headerRow.forEach((cell, index) => {
+    const normalized = normalizeImportHeader(cell);
+    Object.entries(IMPORT_HEADER_ALIASES).forEach(([field, aliases]) => {
+      if (map[field] === undefined && aliases.includes(normalized)) {
+        map[field] = index;
+      }
+    });
+  });
+  return map;
+}
+
+function looksLikeHeaderRow(row) {
+  return Object.keys(buildImportHeaderMap(row)).length >= 2;
+}
+
+function buildImportRecord(row, headerMap = null) {
+  const pick = (field, fallbackIndex) => {
+    const raw = headerMap ? row[headerMap[field]] : row[fallbackIndex];
+    return normalizeImportValue(raw, field);
+  };
+  const record = {
+    chineseName: pick('chineseName', 0),
+    studentNo: pick('studentNo', 1),
+    className: pick('className', 2),
+    seatNo: pick('seatNo', 3),
+    englishName: pick('englishName', 4),
+  };
+  if (!record.studentNo && !record.chineseName && !record.className) return null;
+  if (looksLikeHeaderRow(Object.values(record))) return null;
+  return record;
+}
+
+function buildImportRowsFromMatrix(matrix) {
+  const rows = matrix
+    .map(row => row.map(cleanImportCell))
+    .filter(row => row.some(Boolean));
+  if (rows.length === 0) return [];
+
+  const headerMap = looksLikeHeaderRow(rows[0]) ? buildImportHeaderMap(rows[0]) : null;
+  const startIndex = headerMap ? 1 : 0;
+  return rows
+    .slice(startIndex)
+    .map(row => buildImportRecord(row, headerMap))
+    .filter(row => row && row.studentNo);
+}
+
+function detectImportDelimiter(text) {
+  const sample = (text.split(/\r?\n/).find(line => line.trim()) || '');
+  if (sample.includes('\t')) return '\t';
+  const commaCount = (sample.match(/,/g) || []).length;
+  const semicolonCount = (sample.match(/;/g) || []).length;
+  return semicolonCount > commaCount ? ';' : ',';
+}
+
+function parseDelimitedText(text, delimiter) {
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < normalized.length; i++) {
+    const char = normalized[i];
+    if (char === '"') {
+      if (inQuotes && normalized[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else if (inQuotes || cell === '') {
+        inQuotes = !inQuotes;
+      } else {
+        cell += char;
+      }
+      continue;
+    }
+    if (!inQuotes && char === delimiter) {
+      row.push(cell);
+      cell = '';
+      continue;
+    }
+    if (!inQuotes && char === '\n') {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+      continue;
+    }
+    cell += char;
+  }
+
+  row.push(cell);
+  rows.push(row);
+  return rows;
+}
+
+function parseImportText(text) {
+  return buildImportRowsFromMatrix(parseDelimitedText(text, detectImportDelimiter(text)));
+}
+
+function readUInt16LE(bytes, offset) {
+  return bytes[offset] | (bytes[offset + 1] << 8);
+}
+
+function readUInt32LE(bytes, offset) {
+  return (
+    bytes[offset] |
+    (bytes[offset + 1] << 8) |
+    (bytes[offset + 2] << 16) |
+    (bytes[offset + 3] << 24)
+  ) >>> 0;
+}
+
+function findZipDirectoryEnd(bytes) {
+  const minOffset = Math.max(0, bytes.length - 65557);
+  for (let offset = bytes.length - 22; offset >= minOffset; offset--) {
+    if (readUInt32LE(bytes, offset) === 0x06054b50) return offset;
+  }
+  return -1;
+}
+
+function decodeZipText(bytes) {
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+function createZipReader(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const endOffset = findZipDirectoryEnd(bytes);
+  if (endOffset === -1) throw new Error('Unable to read the Excel file.');
+
+  const entryCount = readUInt16LE(bytes, endOffset + 10);
+  const centralDirectoryOffset = readUInt32LE(bytes, endOffset + 16);
+  const entries = {};
+  let offset = centralDirectoryOffset;
+
+  for (let i = 0; i < entryCount; i++) {
+    if (readUInt32LE(bytes, offset) !== 0x02014b50) {
+      throw new Error('The Excel file looks corrupted.');
+    }
+    const compressionMethod = readUInt16LE(bytes, offset + 10);
+    const compressedSize = readUInt32LE(bytes, offset + 20);
+    const fileNameLength = readUInt16LE(bytes, offset + 28);
+    const extraLength = readUInt16LE(bytes, offset + 30);
+    const commentLength = readUInt16LE(bytes, offset + 32);
+    const localHeaderOffset = readUInt32LE(bytes, offset + 42);
+    const fileNameStart = offset + 46;
+    const fileName = decodeZipText(bytes.slice(fileNameStart, fileNameStart + fileNameLength));
+
+    entries[fileName] = {
+      compressionMethod,
+      compressedSize,
+      localHeaderOffset,
+    };
+    offset += 46 + fileNameLength + extraLength + commentLength;
+  }
+
+  return { bytes, entries };
+}
+
+async function inflateRawBytes(bytes) {
+  if (typeof DecompressionStream === 'undefined') {
+    throw new Error('This browser does not support Excel import. Please use CSV instead.');
+  }
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function extractZipEntry(zip, path) {
+  const entry = zip.entries[path];
+  if (!entry) return null;
+
+  const offset = entry.localHeaderOffset;
+  if (readUInt32LE(zip.bytes, offset) !== 0x04034b50) {
+    throw new Error('The Excel file looks corrupted.');
+  }
+  const fileNameLength = readUInt16LE(zip.bytes, offset + 26);
+  const extraLength = readUInt16LE(zip.bytes, offset + 28);
+  const dataStart = offset + 30 + fileNameLength + extraLength;
+  const compressed = zip.bytes.slice(dataStart, dataStart + entry.compressedSize);
+
+  if (entry.compressionMethod === 0) return compressed;
+  if (entry.compressionMethod === 8) return inflateRawBytes(compressed);
+  throw new Error('Unsupported Excel compression format.');
+}
+
+async function extractZipXml(zip, path) {
+  const data = await extractZipEntry(zip, path);
+  if (!data) return '';
+  return decodeZipText(data);
+}
+
+function parseXml(xmlText) {
+  const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
+  if (xml.getElementsByTagName('parsererror').length) {
+    throw new Error('Unable to parse the Excel file.');
+  }
+  return xml;
+}
+
+function readInlineString(node) {
+  return Array.from(node.getElementsByTagNameNS('*', 't'))
+    .map(item => item.textContent || '')
+    .join('');
+}
+
+function parseSharedStrings(xmlText) {
+  if (!xmlText) return [];
+  const xml = parseXml(xmlText);
+  return Array.from(xml.getElementsByTagNameNS('*', 'si')).map(readInlineString);
+}
+
+function columnRefToIndex(ref) {
+  const letters = (ref || 'A').replace(/\d+/g, '').toUpperCase();
+  let index = 0;
+  for (let i = 0; i < letters.length; i++) {
+    index = index * 26 + (letters.charCodeAt(i) - 64);
+  }
+  return Math.max(index - 1, 0);
+}
+
+function readWorksheetCell(cell, sharedStrings) {
+  const type = cell.getAttribute('t');
+  if (type === 'inlineStr') return readInlineString(cell);
+
+  const valueNode = cell.getElementsByTagNameNS('*', 'v')[0];
+  if (!valueNode) return '';
+
+  const raw = valueNode.textContent || '';
+  if (type === 's') return sharedStrings[Number(raw)] || '';
+  if (type === 'b') return raw === '1' ? 'TRUE' : 'FALSE';
+  return raw;
+}
+
+function parseWorksheetMatrix(xmlText, sharedStrings) {
+  const xml = parseXml(xmlText);
+  return Array.from(xml.getElementsByTagNameNS('*', 'row')).map(rowNode => {
+    const row = [];
+    Array.from(rowNode.getElementsByTagNameNS('*', 'c')).forEach(cell => {
+      row[columnRefToIndex(cell.getAttribute('r'))] = readWorksheetCell(cell, sharedStrings);
+    });
+    return row;
+  });
+}
+
+function findFirstWorksheetPath(zip) {
+  const paths = Object.keys(zip.entries)
+    .filter(path => /^xl\/worksheets\/sheet\d+\.xml$/i.test(path))
+    .sort((a, b) => {
+      const aNo = parseInt((a.match(/sheet(\d+)\.xml$/i) || [])[1] || '0', 10);
+      const bNo = parseInt((b.match(/sheet(\d+)\.xml$/i) || [])[1] || '0', 10);
+      return aNo - bNo;
+    });
+  if (paths.length === 0) throw new Error('No worksheet was found in the Excel file.');
+  return paths[0];
+}
+
+async function parseXlsxFile(file) {
+  const zip = createZipReader(await file.arrayBuffer());
+  const sharedStrings = parseSharedStrings(await extractZipXml(zip, 'xl/sharedStrings.xml'));
+  const worksheetPath = findFirstWorksheetPath(zip);
+  const worksheetXml = await extractZipXml(zip, worksheetPath);
+  return buildImportRowsFromMatrix(parseWorksheetMatrix(worksheetXml, sharedStrings));
+}
+
+async function parseImportFile(file) {
+  const name = (file.name || '').toLowerCase();
+  if (name.endsWith('.csv') || name.endsWith('.txt')) {
+    return parseImportText(await file.text());
+  }
+  if (name.endsWith('.xls')) {
+    throw new Error('Legacy Excel (.xls) is not supported. Please save the file as .xlsx or CSV.');
+  }
+  if (name.endsWith('.xlsx')) {
+    return parseXlsxFile(file);
+  }
+  throw new Error('Unsupported file type. Please use CSV or Excel (.xlsx).');
+}
+
+function renderImportPreview(rows) {
+  let h = '<table><thead><tr><th>Chinese Name</th><th>Student No.</th><th>Class</th><th>Seat</th><th>English Name</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    h += `<tr><td>${escapeHtml(r.chineseName)}</td><td>${escapeHtml(r.studentNo)}</td><td>${escapeHtml(r.className)}</td><td>${escapeHtml(r.seatNo)}</td><td>${escapeHtml(r.englishName)}</td></tr>`;
+  });
+  h += '</tbody></table>';
+  $('#importPreview').innerHTML = h;
+  $('#importPreview').style.display = 'block';
+  $('#btnConfirmImport').disabled = false;
+}
+
+function applyImportPreview(rows, sourceText) {
+  if (!rows.length) {
+    _importRows = [];
+    resetImportPreview();
+    $('#importSourceInfo').textContent = sourceText || '';
+    toast('No valid rows found.', 'error');
+    return;
+  }
+  _importRows = rows;
+  renderImportPreview(rows);
+  $('#importSourceInfo').textContent = `${sourceText} ${rows.length} row(s) ready to import.`;
+}
+
+async function handleImportFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) {
+    _importRows = [];
+    $('#importSourceInfo').textContent = '';
+    resetImportPreview();
+    return;
+  }
+
+  try {
+    applyImportPreview(await parseImportFile(file), `Previewing file: ${file.name}.`);
+  } catch (err) {
+    console.error('[Import] Failed to parse file:', err);
+    _importRows = [];
+    resetImportPreview();
+    $('#importSourceInfo').textContent = `Failed to read file: ${file.name}`;
+    toast(err.message || 'Unable to read the selected file.', 'error');
+  }
+}
+
+async function previewImport() {
+  const raw = $('#importData').value.trim();
+  const file = $('#importFile').files[0];
+
+  try {
+    if (raw) {
+      applyImportPreview(parseImportText(raw), 'Previewing pasted data.');
+      return;
+    }
+    if (file) {
+      applyImportPreview(await parseImportFile(file), `Previewing file: ${file.name}.`);
+      return;
+    }
+    toast('Please paste data or choose a CSV / Excel file first.', 'error');
+  } catch (err) {
+    console.error('[Import] Failed to build preview:', err);
+    _importRows = [];
+    resetImportPreview();
+    toast(err.message || 'Unable to preview the import data.', 'error');
+  }
+}
+
+async function confirmImport() {
+  if (_importRows.length === 0) return;
+  try {
+    const result = await AppDB.importStudents(_importRows);
+    toast(`Imported: ${result.added} added, ${result.updated} updated. Total: ${result.total}`);
+    closeModal('modalImport');
+    refreshStudents();
+  } catch (err) {
+    console.error('[Import] Failed to save students:', err);
+    toast(err.message || 'Import failed.', 'error');
+  }
+}
+
+// ── Grade Adjustment ─────────────────────────────────────────────
+function showGradeAdjustModal() {
+  $('#fRemoveGrade').value = '';
+  $('#fCustomMapping').value = '';
+  openModal('modalGradeAdj');
+}
+
+async function advanceGrades() {
+  const removeGrade = $('#fRemoveGrade').value.trim();
+  const students = AppDB.students();
+
+  try {
+    if (removeGrade) {
+      const toRemove = students.filter(s => s.className.startsWith(removeGrade));
+      await Promise.all(toRemove.map(s => AppDB.removeStudent(s.id)));
+      toast(`Removed ${toRemove.length} students from ${removeGrade}.`, 'info');
+    }
+
+    const remaining = AppDB.students();
+    const updates = [];
+    remaining.forEach(s => {
+      const match = s.className.match(/^(G)(\d+)(.*)$/i);
+      if (match) {
+        const newClass = match[1] + (parseInt(match[2], 10) + 1) + match[3];
+        updates.push(AppDB.updateStudent(s.id, { className: newClass }));
+      }
+    });
+
+    await Promise.all(updates);
+    toast(`Advanced ${updates.length} students by 1 grade level.`);
+    closeModal('modalGradeAdj');
+    refreshStudents();
+  } catch (err) {
+    console.error('[Admin] Failed to advance grades:', err);
+    toast(err.message || 'Failed to advance grades.', 'error');
+  }
+}
+
+async function applyCustomMapping() {
+  const raw = $('#fCustomMapping').value.trim();
+  if (!raw) { toast('Please enter mappings.', 'error'); return; }
+  const mappings = {};
+  raw.split('\n').forEach(line => {
+    const parts = line.split('->').map(s => s.trim());
+    if (parts.length === 2 && parts[0] && parts[1]) {
+      mappings[parts[0]] = parts[1];
+    }
+  });
+  const students = AppDB.students();
+  const updates = [];
+  students.forEach(s => {
+    if (mappings[s.className]) {
+      updates.push(AppDB.updateStudent(s.id, { className: mappings[s.className] }));
+    }
+  });
+
+  try {
+    await Promise.all(updates);
+    toast(`Updated ${updates.length} students with custom mapping.`);
+    closeModal('modalGradeAdj');
+    refreshStudents();
+  } catch (err) {
+    console.error('[Admin] Failed to apply custom mapping:', err);
+    toast(err.message || 'Failed to update class mappings.', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LEAVE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════
+function refreshLeaves() {
+  populateClassFilters();
+  renderPendingLeaves();
+  renderAllLeaves();
+}
+
+function renderPendingLeaves() {
+  const pending = AppDB.getPendingLeaves();
+  if (pending.length === 0) {
+    $('#pendingLeavesTable').innerHTML = '<p style="color:var(--text-muted)">No pending leave requests.</p>';
+    return;
+  }
+
+  // Detect duplicates: same student + overlapping dates
+  const duplicateIds = detectDuplicateLeaves(pending);
+
+  let h = '<table><thead><tr><th><input type="checkbox" onchange="toggleAllPending(this)"></th><th>Class</th><th>Student</th><th>Type</th><th>From</th><th>To</th><th>Periods</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+  pending.forEach(l => {
+    const isDup = duplicateIds.has(l.id);
+    const rowStyle = isDup ? ' style="background:var(--warning-bg)"' : '';
+    const dupBadge = isDup ? ' <span class="badge badge-pending" title="此學生有重複申請假單">⚠ 重複</span>' : '';
+    h += `<tr${rowStyle}>
+      <td><input type="checkbox" class="pending-cb" value="${l.id}"></td>
+      <td>${escapeHtml(l.className)}</td><td>${escapeHtml(l.chineseName || l.englishName)}${dupBadge}</td>
+      <td>${escapeHtml(l.leaveType)}</td>
+      <td>${escapeHtml((l.startTime||'').slice(0,16))}</td><td>${escapeHtml((l.endTime||'').slice(0,16))}</td>
+      <td>${l.periods||'-'}</td>
+      <td>${statusBadge(l.status)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-outline btn-sm" onclick="viewLeaveForm('${l.id}')" title="View leave form">View</button>
+        <button class="btn btn-success btn-sm" onclick="approveLeave('${l.id}')">Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="rejectLeave('${l.id}')">Reject</button>
+      </td></tr>`;
+  });
+  h += '</tbody></table>';
+  $('#pendingLeavesTable').innerHTML = h;
+}
+
+function toggleAllPending(master) {
+  $$('.pending-cb').forEach(cb => cb.checked = master.checked);
+}
+
+function getSelectedPendingIds() {
+  return [...$$('.pending-cb:checked')].map(cb => cb.value);
+}
+
+async function approveLeave(id) {
+  try {
+    await AppDB.updateLeave(id, { status: 'approved' });
+    toast('Leave approved.');
+    refreshLeaves();
+  } catch (err) {
+    console.error('[Admin] Failed to approve leave:', err);
+    toast(err.message || 'Failed to approve leave.', 'error');
+  }
+}
+
+async function rejectLeave(id) {
+  try {
+    await AppDB.updateLeave(id, { status: 'rejected' });
+    toast('Leave rejected.');
+    refreshLeaves();
+  } catch (err) {
+    console.error('[Admin] Failed to reject leave:', err);
+    toast(err.message || 'Failed to reject leave.', 'error');
+  }
+}
+
+async function bulkApproveLeaves() {
+  const ids = getSelectedPendingIds();
+  if (ids.length === 0) { toast('Select at least one leave.', 'error'); return; }
+  try {
+    await Promise.all(ids.map(id => AppDB.updateLeave(id, { status: 'approved' })));
+    toast(`Approved ${ids.length} leave(s).`);
+    refreshLeaves();
+  } catch (err) {
+    console.error('[Admin] Failed to bulk approve leaves:', err);
+    toast(err.message || 'Failed to approve selected leaves.', 'error');
+  }
+}
+
+async function bulkRejectLeaves() {
+  const ids = getSelectedPendingIds();
+  if (ids.length === 0) { toast('Select at least one leave.', 'error'); return; }
+  try {
+    await Promise.all(ids.map(id => AppDB.updateLeave(id, { status: 'rejected' })));
+    toast(`Rejected ${ids.length} leave(s).`);
+    refreshLeaves();
+  } catch (err) {
+    console.error('[Admin] Failed to bulk reject leaves:', err);
+    toast(err.message || 'Failed to reject selected leaves.', 'error');
+  }
+}
+
+/**
+ * Detect duplicate leave applications:
+ * Same studentNo with overlapping date ranges.
+ * Only flags as duplicate if NONE of the overlapping pair is rejected.
+ * (i.e. once one is rejected, the warning is dismissed)
+ * Returns a Set of leave IDs that are duplicates.
+ */
+function detectDuplicateLeaves(leaves) {
+  const duplicateIds = new Set();
+  // Only consider non-rejected leaves for duplicate detection
+  const active = leaves.filter(l => l.status !== 'rejected');
+  for (let i = 0; i < active.length; i++) {
+    for (let j = i + 1; j < active.length; j++) {
+      const a = active[i];
+      const b = active[j];
+      if (!a.studentNo || !b.studentNo) continue;
+      if (a.studentNo !== b.studentNo) continue;
+      // Check date overlap
+      const aStart = a.fromDate || (a.startTime || '').slice(0, 10);
+      const aEnd = a.toDate || (a.endTime || '').slice(0, 10) || aStart;
+      const bStart = b.fromDate || (b.startTime || '').slice(0, 10);
+      const bEnd = b.toDate || (b.endTime || '').slice(0, 10) || bStart;
+      if (aStart <= bEnd && bStart <= aEnd) {
+        duplicateIds.add(a.id);
+        duplicateIds.add(b.id);
+      }
+    }
+  }
+  return duplicateIds;
+}
+
+/**
+ * Open the leave form page in a new tab to view/print
+ */
+function viewLeaveForm(id) {
+  window.open('leave-form.html?id=' + encodeURIComponent(id), '_blank');
+}
+
+function renderLeaveTable(containerId, list, duplicateIds, showAction) {
+  if (list.length === 0) {
+    $(`#${containerId}`).innerHTML = '<p style="color:var(--text-muted)">No records.</p>';
+    return;
+  }
+  let h = '<table><thead><tr><th>Class</th><th>Student</th><th>Type</th><th>From</th><th>To</th><th>Periods</th><th>Actions</th></tr></thead><tbody>';
+  list.forEach(l => {
+    const isDup = duplicateIds.has(l.id);
+    const rowStyle = isDup ? ' style="background:var(--warning-bg)"' : '';
+    const dupBadge = isDup ? ' <span class="badge badge-pending" title="此學生有重複申請假單">⚠ 重複</span>' : '';
+
+    let actions = `<button class="btn btn-outline btn-sm" onclick="viewLeaveForm('${l.id}')" title="View">View</button> `;
+    if (showAction === 'reject') {
+      actions += `<button class="btn btn-danger btn-sm" onclick="rejectLeave('${l.id}')">Reject</button>`;
+    } else if (showAction === 'approve') {
+      actions += `<button class="btn btn-success btn-sm" onclick="approveLeave('${l.id}')">Approve</button>`;
+    }
+
+    h += `<tr${rowStyle}><td>${escapeHtml(l.className)}</td><td>${escapeHtml(l.chineseName || l.englishName)}${dupBadge}</td><td>${escapeHtml(l.leaveType)}</td>
+      <td>${escapeHtml((l.startTime||'').slice(0,16))}</td><td>${escapeHtml((l.endTime||'').slice(0,16))}</td>
+      <td>${l.periods||'-'}</td>
+      <td style="white-space:nowrap">${actions}</td></tr>`;
+  });
+  h += '</tbody></table>';
+  $(`#${containerId}`).innerHTML = h;
+}
+
+function renderAllLeaves() {
+  const from = $('#leaveFilterFrom').value;
+  const to = $('#leaveFilterTo').value;
+  const cls = $('#leaveClassFilter').value;
+  let list;
+  if (from && to) {
+    list = AppDB.getLeavesByDateRange(from, to);
+  } else {
+    list = AppDB.leave();
+  }
+  if (cls) list = list.filter(l => l.className === cls);
+
+  // Detect duplicates (ignoring rejected)
+  const duplicateIds = detectDuplicateLeaves(AppDB.leave());
+
+  // Split into approved and rejected
+  const approved = list.filter(l => l.status === 'approved')
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  const rejected = list.filter(l => l.status === 'rejected')
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+  renderLeaveTable('approvedLeavesTable', approved, duplicateIds, 'reject');
+  renderLeaveTable('rejectedLeavesTable', rejected, duplicateIds, 'approve');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TARDY MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════
+function renderTardyTable(containerId, tardies) {
+  if (tardies.length === 0) {
+    $(`#${containerId}`).innerHTML = '<p style="color:var(--text-muted)">No tardy records.</p>';
+    return;
+  }
+  let h = '<table><thead><tr><th>Class</th><th>Seat</th><th>Student No.</th><th>Chinese Name</th><th>English Name</th><th>Reason</th><th>Submitted</th></tr></thead><tbody>';
+  tardies.forEach(t => {
+    const time = t.createdAt ? t.createdAt.slice(11, 16) : '';
+    h += `<tr><td>${escapeHtml(t.className)}</td><td>${escapeHtml(t.seatNo)}</td><td>${escapeHtml(t.studentNo)}</td><td>${escapeHtml(t.chineseName)}</td><td>${escapeHtml(t.englishName)}</td><td>${escapeHtml(t.reason || '-')}</td><td>${escapeHtml(time)}</td></tr>`;
+  });
+  h += '</tbody></table>';
+  $(`#${containerId}`).innerHTML = h;
+}
+
+function refreshTardies() {
+  const d = today();
+  const todayTardies = AppDB.getTardiesByDate(d);
+  renderTardyTable('tardyTodayTable', todayTardies);
+}
+
+function doCrossReference() {
+  const raw = $('#crossRefInput').value.trim();
+  if (!raw) { toast('Please paste student numbers.', 'error'); return; }
+  const inputNos = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  const todayTardies = AppDB.getTardiesByDate(today());
+  const tardyNos = new Set(todayTardies.map(t => t.studentNo));
+
+  const filled = [];
+  const missing = [];
+  inputNos.forEach(no => {
+    if (tardyNos.has(no)) {
+      filled.push(no);
+    } else {
+      missing.push(no);
+    }
+  });
+
+  let html = '';
+  if (missing.length > 0) {
+    html += `<div class="crossref-result missing"><strong>未填表學生 (${missing.length})</strong><br>Students who have NOT submitted a tardy form:`;
+    html += '<table style="margin-top:8px"><thead><tr><th>Student No.</th><th>Class</th><th>Chinese Name</th><th>English Name</th></tr></thead><tbody>';
+    missing.forEach(no => {
+      const s = AppDB.getStudentByNo(no);
+      html += `<tr><td>${escapeHtml(no)}</td><td>${escapeHtml(s?.className||'N/A')}</td><td>${escapeHtml(s?.chineseName||'N/A')}</td><td>${escapeHtml(s?.englishName||'N/A')}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+  if (filled.length > 0) {
+    html += `<div class="crossref-result found"><strong>已填表學生 (${filled.length})</strong><br>Students who have submitted a tardy form:`;
+    html += '<table style="margin-top:8px"><thead><tr><th>Student No.</th><th>Class</th><th>Chinese Name</th></tr></thead><tbody>';
+    filled.forEach(no => {
+      const s = AppDB.getStudentByNo(no);
+      html += `<tr><td>${escapeHtml(no)}</td><td>${escapeHtml(s?.className||'N/A')}</td><td>${escapeHtml(s?.chineseName||'N/A')}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+  if (missing.length === 0 && filled.length === 0) {
+    html = '<p style="color:var(--text-muted);margin-top:12px">No matches found.</p>';
+  }
+  $('#crossRefResults').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HOLIDAY MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════
+function refreshHolidays() {
+  const list = AppDB.holidays().slice().sort((a, b) =>
+    (a.startDate || a.date || '').localeCompare(b.startDate || b.date || '') ||
+    (a.endDate || a.startDate || a.date || '').localeCompare(b.endDate || b.startDate || b.date || '') ||
+    (a.name || '').localeCompare(b.name || '')
+  );
+  if (list.length === 0) {
+    $('#holidayList').innerHTML = '<p style="color:var(--text-muted)">No holidays added yet.</p>';
+    return;
+  }
+  let h = '';
+  list.forEach(hol => {
+    const startDate = hol.startDate || hol.date || '';
+    const endDate = hol.endDate || hol.startDate || hol.date || '';
+    const rangeLabel = startDate && endDate && startDate !== endDate ? `${startDate} ~ ${endDate}` : startDate;
+    h += `<div class="holiday-item">
+      <span class="hi-date">${escapeHtml(rangeLabel)}</span>
+      <div class="hi-meta">
+        <span class="hi-name">${escapeHtml(hol.name)}</span>
+        <span class="hi-type badge badge-info">${escapeHtml(hol.type)}</span>
+      </div>
+      <div class="hi-actions">
+        <button class="btn btn-danger btn-sm" onclick='deleteHoliday(${JSON.stringify(hol.id)})'>Delete</button>
+      </div>
+    </div>`;
+  });
+  $('#holidayList').innerHTML = h;
+}
+
+function showAddHolidayModal() {
+  $('#fHolidayStartDate').value = '';
+  $('#fHolidayEndDate').value = '';
+  $('#fHolidayName').value = '';
+  $('#fHolidayType').value = 'national';
+  openModal('modalHoliday');
+}
+
+async function saveHoliday() {
+  const startDate = $('#fHolidayStartDate').value;
+  const endDate = $('#fHolidayEndDate').value || startDate;
+  const name = $('#fHolidayName').value.trim();
+  if (!startDate || !name) { toast('Start date and name are required.', 'error'); return; }
+  if (endDate < startDate) { toast('End date cannot be earlier than start date.', 'error'); return; }
+  try {
+    await AppDB.addHoliday({ startDate, endDate, name, type: $('#fHolidayType').value });
+    toast('Holiday added.');
+    closeModal('modalHoliday');
+    refreshHolidays();
+  } catch (err) {
+    console.error('[Admin] Failed to save holiday:', err);
+    toast(err.message || 'Failed to save holiday.', 'error');
+  }
+}
+
+async function deleteHoliday(id) {
+  try {
+    await AppDB.removeHoliday(id);
+    toast('Holiday removed.');
+    refreshHolidays();
+  } catch (err) {
+    console.error('[Admin] Failed to remove holiday:', err);
+    toast(err.message || 'Failed to remove holiday.', 'error');
+  }
+}
+
+function holidayKey(holiday) {
+  const startDate = holiday.startDate || holiday.date || '';
+  const endDate = holiday.endDate || holiday.startDate || holiday.date || '';
+  return `${startDate}|${endDate}|${holiday.name || ''}`;
+}
+
+// Populate the year selector for Google Calendar sync
+function initGcalYearSelector() {
+  const sel = document.getElementById('gcalYear');
+  if (!sel) return;
+  const thisYear = new Date().getFullYear();
+  for (let y = thisYear - 1; y <= thisYear + 1; y++) {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    if (y === thisYear) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+async function syncGoogleCalendar() {
+  const yearSel = document.getElementById('gcalYear');
+  const year = yearSel ? parseInt(yearSel.value, 10) : new Date().getFullYear();
+
+  toast(`Fetching ${year} holidays from Google Calendar...`);
+
+  try {
+    const result = await AppDB.importGoogleCalendarHolidays(year);
+    toast(`Synced! Added ${result.added} holidays, ${result.skipped} already existed.`);
+    refreshHolidays();
+  } catch (err) {
+    console.error('[Admin] Google Calendar sync failed:', err);
+    let msg = 'Google Calendar sync failed. ';
+    if (err.message && err.message.includes('403')) {
+      msg += 'Please enable the Google Calendar API in your Google Cloud Console (project: tardy-and-leave).';
+    } else {
+      msg += (err.message || 'Unknown error.');
+    }
+    toast(msg, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════════
+let _exportData = null;
+let _exportType = null;
+
+function getExportData(type, from, to) {
+  if (type === 'leaves') {
+    // Only export approved leaves
+    return AppDB.exportLeaves(from, to).filter(l => l.status === 'approved');
+  }
+  return AppDB.exportTardies(from, to);
+}
+
+function previewExport(type) {
+  const from = $('#exportFrom').value;
+  const to = $('#exportTo').value;
+  if (!from || !to) { toast('Please select date range.', 'error'); return; }
+  const data = getExportData(type, from, to);
+  _exportData = data;
+  _exportType = type;
+
+  if (data.length === 0) {
+    $('#exportPreview').innerHTML = '<p style="color:var(--text-muted)">No records found for this date range.</p>';
+    $('#exportActions').style.display = 'none';
+    return;
+  }
+
+  const cols = Object.keys(data[0]);
+  const label = type === 'leaves' ? 'Approved Leave' : 'Tardy';
+  let h = `<p style="margin-bottom:8px;font-weight:600">${label} Records: ${data.length} rows</p>`;
+  h += '<div class="table-wrap" style="max-height:300px;overflow:auto"><table><thead><tr>' + cols.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
+  data.slice(0, 100).forEach(row => {
+    h += '<tr>' + cols.map(c => `<td>${escapeHtml(row[c])}</td>`).join('') + '</tr>';
+  });
+  if (data.length > 100) h += `<tr><td colspan="${cols.length}" style="text-align:center;color:var(--text-muted)">... and ${data.length - 100} more rows</td></tr>`;
+  h += '</tbody></table></div>';
+  $('#exportPreview').innerHTML = h;
+  $('#exportActions').style.display = 'flex';
+}
+
+function downloadExport(type) {
+  const from = $('#exportFrom').value;
+  const to = $('#exportTo').value;
+  if (!from || !to) { toast('Please select date range.', 'error'); return; }
+  const data = getExportData(type, from, to);
+  if (data.length === 0) { toast('No records to export.', 'error'); return; }
+  const cols = Object.keys(data[0]);
+  // BOM for Excel UTF-8 compatibility
+  let csv = '\uFEFF' + cols.join(',') + '\n';
+  data.forEach(row => {
+    csv += cols.map(c => {
+      let v = String(row[c] ?? '');
+      if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+        v = '"' + v.replace(/"/g, '""') + '"';
+      }
+      return v;
+    }).join(',') + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ibsh_${type}_${from}_${to}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`Exported ${data.length} ${type} records.`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════════
+function refreshSettings() {
+  const s = AppDB.getSettings();
+  $('#settingSchoolYear').value = s.currentSchoolYear || '';
+  refreshHolidays();
+}
+
+async function saveSettings() {
+  try {
+    await AppDB.setSetting('currentSchoolYear', $('#settingSchoolYear').value.trim());
+    toast('Settings saved.');
+  } catch (err) {
+    console.error('[Admin] Failed to save settings:', err);
+    toast(err.message || 'Failed to save settings.', 'error');
+  }
+}
+
+function confirmClear(type) {
+  showConfirm(`Are you sure you want to delete ALL ${type} records? This cannot be undone.`, async () => {
+    if (type === 'students') {
+      const all = AppDB.students().slice();
+      await Promise.all(all.map(s => AppDB.removeStudent(s.id)));
+      _selectedStudentIds.clear();
+      toast('All student records cleared.');
+      refreshStudents();
+    } else if (type === 'leaves') {
+      const all = AppDB.leave().slice();
+      await Promise.all(all.map(l => AppDB.removeLeave(l.id)));
+      toast('All leave records cleared.');
+      refreshLeaves();
+    } else if (type === 'tardies') {
+      await AppDB.clearTardies();
+      toast('All tardy records cleared.');
+      refreshTardies();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CONFIRM DIALOG
+// ═══════════════════════════════════════════════════════════════════
+function showConfirm(msg, onConfirm) {
+  $('#confirmMsg').textContent = msg;
+  const okBtn = $('#confirmOk');
+  const newBtn = okBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(newBtn, okBtn);
+  newBtn.id = 'confirmOk';
+  newBtn.addEventListener('click', async () => {
+    closeModal('modalConfirm');
+    try {
+      await onConfirm();
+    } catch (err) {
+      console.error('[Admin] Confirm action failed:', err);
+      toast(err.message || 'Action failed.', 'error');
+    }
+  });
+  openModal('modalConfirm');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+(async function boot() {
+  await AppDB.init();
+  console.log('[Admin] AppDB ready:', AppDB.status());
+
+  // Set default date range for export
+  const d = today();
+  const monthAgo = new Date();
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  $('#exportFrom').value = monthAgo.toISOString().slice(0, 10);
+  $('#exportTo').value = d;
+
+  // Set default date range for leave filter
+  $('#leaveFilterFrom').value = monthAgo.toISOString().slice(0, 10);
+  $('#leaveFilterTo').value = d;
+
+  initGcalYearSelector();
+  refreshDashboard();
+})();
+</script>
+</body>
+</html>
