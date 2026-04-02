@@ -748,8 +748,18 @@
             const day = date.getDay();
 
             if (day === 0 || day === 6) {
-                warningEl.textContent = '⚠️ This date falls on a weekend. Please select a weekday.';
+                // Check if this weekend is a designated school day (補課日)
+                const isSchoolDay = await isDesignatedSchoolDay(dateVal);
+                if (!isSchoolDay) {
+                    warningEl.textContent = '⚠️ This date falls on a weekend. Please select a weekday.';
+                    warningEl.style.display = 'block';
+                    return;
+                }
+                // It's a 補課日 — allow it but show info
+                warningEl.textContent = 'ℹ️ This is a designated school day (補課日).';
                 warningEl.style.display = 'block';
+                warningEl.style.color = '#0d6efd';
+                calculatePeriods();
                 return;
             }
 
@@ -764,6 +774,12 @@
             }
 
             warningEl.style.display = 'none';
+        }
+
+        // Check if a weekend date is a designated school day (補課日)
+        function isDesignatedSchoolDay(dateStr) {
+            if (typeof AppDB === 'undefined' || typeof AppDB.isSchoolDay !== 'function') return false;
+            return AppDB.isSchoolDay(dateStr);
         }
 
         // Convert time string "HH:MM" to minutes since midnight
@@ -816,34 +832,33 @@
 
             const current = new Date(start);
             while (current <= end) {
-                const dayOfWeek = current.getDay();
-                // Skip weekends
-                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                    const dateStr = current.getFullYear() + '-' +
-                        String(current.getMonth() + 1).padStart(2, '0') + '-' +
-                        String(current.getDate()).padStart(2, '0');
+                const dateStr = current.getFullYear() + '-' +
+                    String(current.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(current.getDate()).padStart(2, '0');
 
-                    // Skip holidays
-                    let isHoliday = false;
-                    if (typeof AppDB !== 'undefined' && typeof AppDB.isNonSchoolDay === 'function') {
-                        isHoliday = await AppDB.isNonSchoolDay(dateStr);
+                // Skip non-school days (weekends except 補課日, holidays)
+                let skipDay = false;
+                if (typeof AppDB !== 'undefined' && typeof AppDB.isNonSchoolDay === 'function') {
+                    skipDay = AppDB.isNonSchoolDay(dateStr);
+                } else {
+                    const dayOfWeek = current.getDay();
+                    skipDay = (dayOfWeek === 0 || dayOfWeek === 6);
+                }
+
+                if (!skipDay) {
+                    // Determine the effective time range for this day
+                    let dayStart = '08:10';
+                    let dayEnd = '16:10';
+
+                    if (dateStr === fromDate) {
+                        dayStart = fromTime;
+                    }
+                    if (dateStr === toDate) {
+                        dayEnd = toTime;
                     }
 
-                    if (!isHoliday) {
-                        // Determine the effective time range for this day
-                        let dayStart = '08:10';
-                        let dayEnd = '16:10';
-
-                        if (dateStr === fromDate) {
-                            dayStart = fromTime;
-                        }
-                        if (dateStr === toDate) {
-                            dayEnd = toTime;
-                        }
-
-                        // Count periods using local function (time strings like "08:10")
-                        totalPeriods += countPeriodsInRange(dayStart, dayEnd);
-                    }
+                    // Count periods using local function (time strings like "08:10")
+                    totalPeriods += countPeriodsInRange(dayStart, dayEnd);
                 }
                 current.setDate(current.getDate() + 1);
             }

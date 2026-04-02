@@ -152,6 +152,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
 .holiday-item .hi-name{flex:1;margin:0}
 .holiday-item .hi-type{font-size:.75rem;color:var(--text-muted)}
 .holiday-item .hi-actions{display:flex;align-items:center}
+.holiday-item.schoolday{border-left-color:var(--warning);background:#fff8ee}
 
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media(max-width:768px){
@@ -295,16 +296,6 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
     ═══════════════════════════════════════════════════════════ -->
     <div class="section" id="sec-settings">
       <div class="card">
-        <div class="card-header"><h2>System Settings</h2></div>
-        <div class="card-body">
-          <div class="form-group">
-            <label>Current School Year (e.g. 114)</label>
-            <input type="text" class="form-control" id="settingSchoolYear" style="max-width:200px">
-          </div>
-          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
-        </div>
-      </div>
-      <div class="card">
         <div class="card-header">
           <h2>Holiday Calendar</h2>
           <div class="btn-group">
@@ -314,7 +305,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
           </div>
         </div>
         <div class="card-body">
-          <p style="margin-bottom:12px;color:var(--text-muted);font-size:.92rem">Weekends are already treated as non-school days. Add only school holidays or special break ranges here.</p>
+          <p style="margin-bottom:12px;color:var(--text-muted);font-size:.92rem">Weekends are non-school days by default. Add holidays here, or mark specific weekends as <strong>School Day (補課日)</strong> so students must request leave if absent.</p>
           <div class="holiday-list" id="holidayList"></div>
         </div>
       </div>
@@ -426,7 +417,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
       <p style="margin-bottom:12px;color:var(--text-muted);font-size:.8rem">Leave end date blank for a single-day holiday.</p>
       <div class="form-group"><label>Name</label><input class="form-control" id="fHolidayName" placeholder="e.g. National Day"></div>
       <div class="form-group"><label>Type</label>
-        <select class="form-control" id="fHolidayType"><option value="national">National</option><option value="manual">Custom</option></select>
+        <select class="form-control" id="fHolidayType"><option value="national">National Holiday / 國定假日</option><option value="manual">Custom Holiday / 自訂假日</option><option value="schoolday">School Day (Weekend) / 補課日</option></select>
       </div>
     </div>
     <div class="modal-footer">
@@ -1503,11 +1494,14 @@ function refreshHolidays() {
     const startDate = hol.startDate || hol.date || '';
     const endDate = hol.endDate || hol.startDate || hol.date || '';
     const rangeLabel = startDate && endDate && startDate !== endDate ? `${startDate} ~ ${endDate}` : startDate;
-    h += `<div class="holiday-item">
+    const typeLabels = { national: 'Holiday', manual: 'Custom', schoolday: '補課日 School Day' };
+    const itemClass = hol.type === 'schoolday' ? ' schoolday' : '';
+    const badgeClass = hol.type === 'schoolday' ? 'badge badge-pending' : 'badge badge-info';
+    h += `<div class="holiday-item${itemClass}">
       <span class="hi-date">${escapeHtml(rangeLabel)}</span>
       <div class="hi-meta">
         <span class="hi-name">${escapeHtml(hol.name)}</span>
-        <span class="hi-type badge badge-info">${escapeHtml(hol.type)}</span>
+        <span class="hi-type ${badgeClass}">${escapeHtml(typeLabels[hol.type] || hol.type)}</span>
       </div>
       <div class="hi-actions">
         <button class="btn btn-danger btn-sm" onclick='deleteHoliday(${JSON.stringify(hol.id)})'>Delete</button>
@@ -1668,19 +1662,7 @@ function downloadExport(type) {
 // SETTINGS
 // ═══════════════════════════════════════════════════════════════════
 function refreshSettings() {
-  const s = AppDB.getSettings();
-  $('#settingSchoolYear').value = s.currentSchoolYear || '';
   refreshHolidays();
-}
-
-async function saveSettings() {
-  try {
-    await AppDB.setSetting('currentSchoolYear', $('#settingSchoolYear').value.trim());
-    toast('Settings saved.');
-  } catch (err) {
-    console.error('[Admin] Failed to save settings:', err);
-    toast(err.message || 'Failed to save settings.', 'error');
-  }
 }
 
 function confirmClear(type) {

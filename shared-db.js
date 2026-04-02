@@ -704,6 +704,17 @@
   function isHoliday(dateStr) {
     const date = _toDateStr(dateStr);
     return _holidays.some(holiday => {
+      if (holiday.type === 'schoolday') return false; // 補課日 is not a holiday
+      const start = _toDateStr(holiday.startDate || holiday.date);
+      const end = _toDateStr(holiday.endDate || holiday.startDate || holiday.date);
+      return date >= start && date <= end;
+    });
+  }
+
+  function isSchoolDay(dateStr) {
+    const date = _toDateStr(dateStr);
+    return _holidays.some(holiday => {
+      if (holiday.type !== 'schoolday') return false;
       const start = _toDateStr(holiday.startDate || holiday.date);
       const end = _toDateStr(holiday.endDate || holiday.startDate || holiday.date);
       return date >= start && date <= end;
@@ -718,6 +729,8 @@
   }
 
   function isNonSchoolDay(dateStr) {
+    // Weekend that is a designated school day (補課日) is NOT a non-school day
+    if (isWeekend(dateStr) && isSchoolDay(dateStr)) return false;
     return isWeekend(dateStr) || isHoliday(dateStr);
   }
 
@@ -756,7 +769,7 @@
     while (cursor <= last) {
       const dayStr = _toDateStr(cursor);
 
-      if (!isNonSchoolDay(dayStr)) {
+      if (!isNonSchoolDay(dayStr)) { // includes 補課日 weekends
         let dayStartMinutes = 0;
         let dayEndMinutes = 24 * 60;
 
@@ -955,6 +968,7 @@
     addHoliday,
     removeHoliday,
     isHoliday,
+    isSchoolDay,
     isWeekend,
     isNonSchoolDay,
 
