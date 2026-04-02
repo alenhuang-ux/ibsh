@@ -1033,7 +1033,7 @@
                 deanSignature,
                 doctorNote,
                 status: 'pending',
-                submittedAt: new Date().toISOString()
+                submittedAt: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Taipei' }).replace(' ', 'T')
             };
 
             try {

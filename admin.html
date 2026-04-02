@@ -1411,7 +1411,7 @@ function renderTardyTable(containerId, tardies) {
   }
   let h = '<table><thead><tr><th>Class</th><th>Seat</th><th>Student No.</th><th>Chinese Name</th><th>English Name</th><th>Reason</th><th>Submitted</th></tr></thead><tbody>';
   tardies.forEach(t => {
-    const time = t.createdAt ? t.createdAt.slice(11, 16) : '';
+    const time = t.createdAt ? t.createdAt.replace('T', ' ').slice(11, 16) : '';
     h += `<tr><td>${escapeHtml(t.className)}</td><td>${escapeHtml(t.seatNo)}</td><td>${escapeHtml(t.studentNo)}</td><td>${escapeHtml(t.chineseName)}</td><td>${escapeHtml(t.englishName)}</td><td>${escapeHtml(t.reason || '-')}</td><td>${escapeHtml(time)}</td></tr>`;
   });
   h += '</tbody></table>';

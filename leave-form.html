@@ -199,6 +199,10 @@ body {
     .page-wrap {
         max-width: none;
         padding: 0;
+        margin: 0;
+    }
+    .leave-sheet-stack {
+        gap: 0;
     }
     .toolbar {
         display: none !important;
@@ -219,7 +223,7 @@ body {
 
 <div class="page-wrap">
     <div class="toolbar" id="toolbar">
-        <button class="btn-back" onclick="window.close()">&#x2190; Close</button>
+        <button class="btn-back" onclick="window.location.href='index.html'">&#x2190; Back</button>
         <div class="toolbar-status" id="syncStatus">Storage: Local</div>
         <button class="btn-print" onclick="window.print()">&#x1F5A8; Print / Save PDF</button>
     </div>

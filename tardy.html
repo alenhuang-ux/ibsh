@@ -419,7 +419,7 @@
             const student = JSON.parse(nameSelect.value);
             const reason = document.getElementById('reason').value.trim();
             const now = new Date();
-            const createdAt = now.toISOString();
+            const createdAt = now.toLocaleString('sv-SE', { timeZone: 'Asia/Taipei' }).replace(' ', 'T');
 
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
