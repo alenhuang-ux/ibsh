@@ -178,9 +178,9 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
   <div class="sidebar-brand">IBSH Admin <span>Leave System</span></div>
   <nav class="sidebar-nav" id="sidebarNav">
     <button class="active" data-section="dashboard"><span class="icon">&#127968;</span> Dashboard</button>
-    <button data-section="students"><span class="icon">&#128101;</span> Student Management</button>
     <button data-section="leaves"><span class="icon">&#128196;</span> Leave Management</button>
     <button data-section="tardies"><span class="icon">&#9200;</span> Tardy Management</button>
+    <button data-section="students"><span class="icon">&#128101;</span> Student Management</button>
     <button data-section="settings"><span class="icon">&#9881;</span> Settings</button>
   </nav>
   <div class="sidebar-footer">IBSH &copy; 2025</div>
@@ -202,39 +202,15 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
         <div class="stat-card"><div class="label">Total Students</div><div class="value" id="dashTotalStudents">0</div></div>
         <div class="stat-card" style="border-color:var(--warning)"><div class="label">Pending Leaves</div><div class="value" id="dashPendingLeaves">0</div></div>
         <div class="stat-card" style="border-color:var(--danger)"><div class="label">Today's Tardies</div><div class="value" id="dashTodayTardies">0</div></div>
-        <div class="stat-card" style="border-color:var(--success)"><div class="label">Today's Approved</div><div class="value" id="dashTodayLeaves">0</div></div>
+        <div class="stat-card" style="border-color:var(--success)"><div class="label">Today's Leaves</div><div class="value" id="dashTodayLeaves">0</div></div>
       </div>
       <div class="card">
         <div class="card-header"><h2>Today's Late Arrivals</h2></div>
         <div class="card-body table-wrap" id="dashTardyTable"></div>
       </div>
       <div class="card">
-        <div class="card-header"><h2>Today's Leave Records</h2></div>
+        <div class="card-header"><h2>Today's Leave Records (Approved + Pending)</h2></div>
         <div class="card-body table-wrap" id="dashLeaveTable"></div>
-      </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         SECTION: Student Management
-    ═══════════════════════════════════════════════════════════ -->
-    <div class="section" id="sec-students">
-      <div class="card">
-        <div class="card-header">
-          <h2>Students</h2>
-          <div class="btn-group">
-            <button class="btn btn-primary btn-sm" onclick="showAddStudentModal()">+ Add Student</button>
-            <button class="btn btn-outline btn-sm" onclick="showImportModal()">Import CSV / Excel</button>
-            <button class="btn btn-danger btn-sm" id="btnDeleteSelectedStudents" onclick="bulkDeleteStudents()" disabled>Delete Selected</button>
-            <button class="btn btn-warning btn-sm" onclick="showGradeAdjustModal()">Grade Adjustment</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="search-bar" style="margin-bottom:14px">
-            <input type="text" id="studentSearch" placeholder="Search name, student no., class..." oninput="renderStudents()" style="flex:1;min-width:200px">
-            <select id="studentClassFilter" onchange="renderStudents()"><option value="">All Classes</option></select>
-          </div>
-          <div class="table-wrap" id="studentTableWrap"></div>
-        </div>
       </div>
     </div>
 
@@ -286,6 +262,30 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
           <textarea class="form-control" id="crossRefInput" rows="5" placeholder="e.g.&#10;11001&#10;11002&#10;11003"></textarea>
           <button class="btn btn-primary" style="margin-top:10px" onclick="doCrossReference()">Compare</button>
           <div id="crossRefResults"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SECTION: Student Management
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-students">
+      <div class="card">
+        <div class="card-header">
+          <h2>Students</h2>
+          <div class="btn-group">
+            <button class="btn btn-primary btn-sm" onclick="showAddStudentModal()">+ Add Student</button>
+            <button class="btn btn-outline btn-sm" onclick="showImportModal()">Import CSV / Excel</button>
+            <button class="btn btn-danger btn-sm" id="btnDeleteSelectedStudents" onclick="bulkDeleteStudents()" disabled>Delete Selected</button>
+            <button class="btn btn-warning btn-sm" onclick="showGradeAdjustModal()">Grade Adjustment</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="search-bar" style="margin-bottom:14px">
+            <input type="text" id="studentSearch" placeholder="Search name, student no., class..." oninput="renderStudents()" style="flex:1;min-width:200px">
+            <select id="studentClassFilter" onchange="renderStudents()"><option value="">All Classes</option></select>
+          </div>
+          <div class="table-wrap" id="studentTableWrap"></div>
         </div>
       </div>
     </div>
@@ -403,17 +403,12 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
   <div class="modal" style="max-width:600px">
     <div class="modal-header"><h3>Year / Grade Adjustment</h3><button class="modal-close" onclick="closeModal('modalGradeAdj')">&times;</button></div>
     <div class="modal-body">
-      <p style="margin-bottom:12px;color:var(--text-secondary);font-size:.85rem">Advance all students by one grade level for the new school year. Classes like G7A become G8A, etc.</p>
-      <div class="form-group">
-        <label>Remove Graduated Grade (optional)</label>
-        <input class="form-control" id="fRemoveGrade" placeholder="e.g. G12 (removes all G12 students)" style="max-width:200px">
-      </div>
-      <button class="btn btn-warning" onclick="advanceGrades()">Advance All Grades by 1</button>
-      <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
-      <p style="margin-bottom:8px;font-weight:600;font-size:.85rem">Custom Mapping</p>
-      <p style="margin-bottom:8px;color:var(--text-muted);font-size:.8rem">One mapping per line: OldClass &rarr; NewClass</p>
-      <textarea class="form-control" id="fCustomMapping" rows="5" placeholder="G7A -> G8A&#10;G7B -> G8B&#10;G11A -> G12A"></textarea>
-      <button class="btn btn-primary" style="margin-top:8px" onclick="applyCustomMapping()">Apply Custom Mapping</button>
+      <p style="margin-bottom:12px;color:var(--text-secondary);font-size:.85rem">One-click grade advancement for the new school year:</p>
+      <ul style="margin-bottom:16px;color:var(--text-secondary);font-size:.85rem;padding-left:20px">
+        <li>G12 students will be <strong>deleted</strong> (graduated)</li>
+        <li>All remaining students advance by 1 grade (G7→G8, G8→G9, etc.)</li>
+      </ul>
+      <button class="btn btn-warning" onclick="advanceGrades()">Advance All Grades +1</button>
     </div>
     <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modalGradeAdj')">Close</button></div>
   </div>
@@ -449,6 +444,28 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modalConfirm')">Cancel</button>
       <button class="btn btn-danger" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Modal: Edit Leave ═══ -->
+<div class="modal-overlay" id="modalEditLeave">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header"><h3>Edit Leave Time / 編輯請假時間</h3><button class="modal-close" onclick="closeModal('modalEditLeave')">&times;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="editLeaveId">
+      <div class="form-row">
+        <div class="form-group"><label>From Date / 起始日期</label><input type="date" class="form-control" id="fLeaveFromDate"></div>
+        <div class="form-group"><label>From Time / 起始時間</label><input type="time" class="form-control" id="fLeaveFromTime"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>To Date / 結束日期</label><input type="date" class="form-control" id="fLeaveToDate"></div>
+        <div class="form-group"><label>To Time / 結束時間</label><input type="time" class="form-control" id="fLeaveToTime"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modalEditLeave')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLeaveEdit()">Save</button>
     </div>
   </div>
 </div>
@@ -545,20 +562,20 @@ function refreshDashboard() {
   $('#dashTodayTardies').textContent = todayTardies.length;
 
   const todayLeaves = AppDB.getLeavesByDate(d);
-  const todayApprovedLeaves = todayLeaves.filter(l => l.status === 'approved');
-  $('#dashTodayLeaves').textContent = todayApprovedLeaves.length;
+  const todayDashLeaves = todayLeaves.filter(l => l.status === 'approved' || l.status === 'pending');
+  $('#dashTodayLeaves').textContent = todayDashLeaves.length;
 
   // Tardy table
   renderTardyTable('dashTardyTable', todayTardies);
 
-  // Leave table — only show approved leaves on dashboard
-  const approvedLeaves = todayLeaves.filter(l => l.status === 'approved');
-  if (approvedLeaves.length === 0) {
-    $('#dashLeaveTable').innerHTML = '<p style="color:var(--text-muted)">No approved leave records today.</p>';
+  // Leave table — show approved + pending leaves for today on dashboard
+  const dashLeaves = todayLeaves.filter(l => l.status === 'approved' || l.status === 'pending');
+  if (dashLeaves.length === 0) {
+    $('#dashLeaveTable').innerHTML = '<p style="color:var(--text-muted)">No leave records today.</p>';
   } else {
-    let h = '<table><thead><tr><th>Class</th><th>Student</th><th>Type</th><th>From</th><th>To</th><th>Period</th></tr></thead><tbody>';
-    approvedLeaves.forEach(l => {
-      h += `<tr><td>${escapeHtml(l.className)}</td><td>${escapeHtml(l.chineseName || l.englishName)}</td><td>${escapeHtml(l.leaveType)}</td><td>${escapeHtml(l.fromTime || '')}</td><td>${escapeHtml(l.toTime || '')}</td><td>${l.periods || '-'}</td></tr>`;
+    let h = '<table><thead><tr><th>Class</th><th>Student</th><th>Type</th><th>From</th><th>To</th><th>Period</th><th>Status</th></tr></thead><tbody>';
+    dashLeaves.forEach(l => {
+      h += `<tr><td>${escapeHtml(l.className)}</td><td>${escapeHtml(l.chineseName || l.englishName)}</td><td>${escapeHtml(l.leaveType || l.leaveReason || '')}</td><td>${escapeHtml(l.fromTime || '')}</td><td>${escapeHtml(l.toTime || '')}</td><td>${l.periods || l.totalPeriods || '-'}</td><td>${statusBadge(l.status)}</td></tr>`;
     });
     h += '</tbody></table>';
     $('#dashLeaveTable').innerHTML = h;
@@ -1149,22 +1166,21 @@ async function confirmImport() {
 
 // ── Grade Adjustment ─────────────────────────────────────────────
 function showGradeAdjustModal() {
-  $('#fRemoveGrade').value = '';
-  $('#fCustomMapping').value = '';
   openModal('modalGradeAdj');
 }
 
 async function advanceGrades() {
-  const removeGrade = $('#fRemoveGrade').value.trim();
+  if (!confirm('This will delete all G12 students and advance all remaining grades by 1. Continue?\n\n此操作將刪除所有 G12 學生並將其餘年級 +1，確定繼續？')) return;
+
   const students = AppDB.students();
 
   try {
-    if (removeGrade) {
-      const toRemove = students.filter(s => s.className.startsWith(removeGrade));
-      await Promise.all(toRemove.map(s => AppDB.removeStudent(s.id)));
-      toast(`Removed ${toRemove.length} students from ${removeGrade}.`, 'info');
-    }
+    // Remove G12 students (graduated)
+    const toRemove = students.filter(s => s.className.match(/^G12/i));
+    await Promise.all(toRemove.map(s => AppDB.removeStudent(s.id)));
+    if (toRemove.length) toast(`Removed ${toRemove.length} graduated G12 students.`, 'info');
 
+    // Advance remaining students by 1 grade
     const remaining = AppDB.students();
     const updates = [];
     remaining.forEach(s => {
@@ -1182,35 +1198,6 @@ async function advanceGrades() {
   } catch (err) {
     console.error('[Admin] Failed to advance grades:', err);
     toast(err.message || 'Failed to advance grades.', 'error');
-  }
-}
-
-async function applyCustomMapping() {
-  const raw = $('#fCustomMapping').value.trim();
-  if (!raw) { toast('Please enter mappings.', 'error'); return; }
-  const mappings = {};
-  raw.split('\n').forEach(line => {
-    const parts = line.split('->').map(s => s.trim());
-    if (parts.length === 2 && parts[0] && parts[1]) {
-      mappings[parts[0]] = parts[1];
-    }
-  });
-  const students = AppDB.students();
-  const updates = [];
-  students.forEach(s => {
-    if (mappings[s.className]) {
-      updates.push(AppDB.updateStudent(s.id, { className: mappings[s.className] }));
-    }
-  });
-
-  try {
-    await Promise.all(updates);
-    toast(`Updated ${updates.length} students with custom mapping.`);
-    closeModal('modalGradeAdj');
-    refreshStudents();
-  } catch (err) {
-    console.error('[Admin] Failed to apply custom mapping:', err);
-    toast(err.message || 'Failed to update class mappings.', 'error');
   }
 }
 
@@ -1247,6 +1234,7 @@ function renderPendingLeaves() {
       <td>${statusBadge(l.status)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-outline btn-sm" onclick="viewLeaveForm('${l.id}')" title="View leave form">View</button>
+        <button class="btn btn-warning btn-sm" onclick="showEditLeaveModal('${l.id}')">Edit</button>
         <button class="btn btn-success btn-sm" onclick="approveLeave('${l.id}')">Approve</button>
         <button class="btn btn-danger btn-sm" onclick="rejectLeave('${l.id}')">Reject</button>
       </td></tr>`;
@@ -1399,6 +1387,37 @@ function renderAllLeaves() {
 
   renderLeaveTable('approvedLeavesTable', approved, duplicateIds, 'reject');
   renderLeaveTable('rejectedLeavesTable', rejected, duplicateIds, 'approve');
+}
+
+// ── Edit Leave Time ──────────────────────────────────────────────
+function showEditLeaveModal(id) {
+  const leave = AppDB.leave().find(l => l.id === id);
+  if (!leave) { toast('Leave not found.', 'error'); return; }
+  $('#editLeaveId').value = id;
+  $('#fLeaveFromDate').value = leave.fromDate || (leave.startTime || '').slice(0, 10) || '';
+  $('#fLeaveToDate').value = leave.toDate || (leave.endTime || '').slice(0, 10) || '';
+  $('#fLeaveFromTime').value = leave.fromTime || (leave.startTime || '').slice(11, 16) || '';
+  $('#fLeaveToTime').value = leave.toTime || (leave.endTime || '').slice(11, 16) || '';
+  openModal('modalEditLeave');
+}
+
+async function saveLeaveEdit() {
+  const id = $('#editLeaveId').value;
+  const fromDate = $('#fLeaveFromDate').value;
+  const toDate = $('#fLeaveToDate').value;
+  const fromTime = $('#fLeaveFromTime').value;
+  const toTime = $('#fLeaveToTime').value;
+  if (!fromDate || !toDate) { toast('Please fill in dates.', 'error'); return; }
+  try {
+    await AppDB.updateLeave(id, { fromDate, toDate, fromTime, toTime });
+    toast('Leave time updated.');
+    closeModal('modalEditLeave');
+    refreshLeaves();
+    refreshDashboard();
+  } catch (err) {
+    console.error('[Admin] Failed to update leave:', err);
+    toast(err.message || 'Failed to update leave.', 'error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════

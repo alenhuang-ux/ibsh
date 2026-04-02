@@ -587,18 +587,6 @@
                     </div>
                 </div>
 
-                <div class="form-section" id="deanApprovalSection" style="display:none;">
-                    <h3>Dean's Approval Required / 需主任核准</h3>
-                    <div class="alert" style="background: #fff3cd; border-color: #ffc107;">
-                        <p><strong>⚠️ This leave requires Dean's approval.</strong></p>
-                        <p>Please contact the Dean's office for approval before submitting this form.</p>
-                    </div>
-                    <div class="form-group">
-                        <label>Dean's Approval Signature / 主任核准簽名</label>
-                        <input type="text" id="deanSignature" name="deanSignature" placeholder="Dean's signature (if applicable)">
-                    </div>
-                </div>
-
                 <div class="form-section" id="doctorVerificationSection" style="display:none;">
                     <h3>Doctor's Verification Required / 需診斷證明</h3>
                     <div class="alert" style="background: #fff3cd; border-color: #ffc107;">
@@ -866,15 +854,7 @@
 
         // Show/hide Dean approval and doctor verification sections
         function updateConditionalSections(totalPeriods) {
-            // 3+ days is roughly 21+ periods (7 periods/day)
-            const days = totalPeriods / 7;
             const leaveReason = document.querySelector('input[name="leaveReason"]:checked');
-
-            if (days >= 3) {
-                document.getElementById('deanApprovalSection').style.display = 'block';
-            } else {
-                document.getElementById('deanApprovalSection').style.display = 'none';
-            }
 
             if (leaveReason && leaveReason.value === 'health') {
                 document.getElementById('doctorVerificationSection').style.display = 'block';
@@ -989,6 +969,18 @@
                 </div>
             `;
 
+            // Reminder for 3+ day leave needing Dean's approval
+            const periodNum = parseInt(totalPeriods) || 0;
+            if (periodNum / 7 >= 3) {
+                summaryHTML += `
+                    <div class="summary-item" style="background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:10px; margin-top:10px;">
+                        <strong>⚠️ Reminder / 提醒：</strong><br>
+                        This leave is 3+ days and requires Dean's approval IN ADVANCE.<br>
+                        請假 3 天以上需事先取得主任核准。
+                    </div>
+                `;
+            }
+
             document.getElementById('summaryContent').innerHTML = summaryHTML;
             document.getElementById('previewModal').style.display = 'block';
         }
@@ -1014,7 +1006,6 @@
             const toTime = fullDay ? '16:10' : document.getElementById('toTime').value;
             const totalPeriods = document.getElementById('totalPeriods').textContent;
             const parentNote = document.getElementById('parentNote').value;
-            const deanSignature = document.getElementById('deanSignature')?.value || '';
             const doctorNote = document.getElementById('doctorNote')?.checked || false;
 
             const record = {
@@ -1030,7 +1021,6 @@
                 fullDay,
                 totalPeriods,
                 parentNote,
-                deanSignature,
                 doctorNote,
                 status: 'pending',
                 submittedAt: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Taipei' }).replace(' ', 'T')
@@ -1053,7 +1043,6 @@
                 document.getElementById('studentNo').value = '';
                 document.getElementById('chineseName').value = '';
                 document.getElementById('totalPeriods').textContent = '0 period(s)';
-                document.getElementById('deanApprovalSection').style.display = 'none';
                 document.getElementById('doctorVerificationSection').style.display = 'none';
                 document.getElementById('successMessage').style.display = 'none';
                 document.getElementById('fromTimeGroup').style.display = '';
