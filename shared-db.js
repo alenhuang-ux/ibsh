@@ -366,6 +366,8 @@
       deanSignature: String(record.deanSignature || '').trim(),
       doctorNote: Boolean(record.doctorNote),
       status: String(record.status || 'pending').trim(),
+      returnConfirmed: Boolean(record.returnConfirmed),
+      returnDate: String(record.returnDate || '').trim(),
       createdAt: createdAt,
       submittedAt: _toIsoString(record.submittedAt, createdAt),
     };

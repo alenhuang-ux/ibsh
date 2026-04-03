@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IBSH Student Attendance System</title>
+<title>IBSH Admin - Student Leave Management</title>
 <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
@@ -154,6 +154,56 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
 .holiday-item .hi-actions{display:flex;align-items:center}
 .holiday-item.schoolday{border-left-color:var(--warning);background:#fff8ee}
 
+/* ── Dashboard reminders ─────────────────────────────────────────── */
+.reminder-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:22px}
+.reminder-card{padding:16px 20px;border-radius:var(--radius);border-left:5px solid var(--warning);background:var(--warning-bg);display:flex;align-items:flex-start;gap:12px}
+.reminder-card.danger{border-left-color:var(--danger);background:var(--danger-bg)}
+.reminder-card.info{border-left-color:var(--info);background:var(--info-bg)}
+.reminder-card .ri-icon{font-size:1.5rem;line-height:1}
+.reminder-card .ri-body{flex:1}
+.reminder-card .ri-title{font-weight:700;font-size:.95rem;margin-bottom:2px}
+.reminder-card .ri-desc{font-size:.84rem;color:var(--text-secondary)}
+.reminder-card .ri-count{font-size:1.6rem;font-weight:800;color:var(--danger)}
+
+/* ── Calendar ────────────────────────────────────────────────────── */
+.cal-nav{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.cal-nav button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-weight:600;font-size:.9rem}
+.cal-nav button:hover{background:var(--accent-hover)}
+.cal-nav .cal-title{font-size:1.1rem;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-head{text-align:center;font-size:.78rem;font-weight:700;color:var(--text-muted);padding:6px 0;text-transform:uppercase}
+.cal-cell{min-height:70px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:.82rem;position:relative;cursor:default;transition:background .12s}
+.cal-cell:hover{background:#f0f7ff}
+.cal-cell.today{border:2px solid var(--accent);background:#edf5ff}
+.cal-cell.empty{background:transparent;border-color:transparent;min-height:0}
+.cal-cell.weekend{background:#fafafa;color:var(--text-muted)}
+.cal-cell.holiday{background:#fff0f0}
+.cal-cell.schoolday{background:#fff8ee}
+.cal-day{font-weight:700;margin-bottom:2px}
+.cal-badges{display:flex;flex-wrap:wrap;gap:2px}
+.cal-badge{display:inline-block;padding:1px 5px;border-radius:6px;font-size:.68rem;font-weight:600;line-height:1.4}
+.cal-badge.tardy{background:var(--danger-bg);color:var(--danger)}
+.cal-badge.leave{background:var(--warning-bg);color:var(--warning)}
+.cal-badge.approved{background:var(--success-bg);color:var(--success)}
+
+/* ── Leaderboard & Charts ────────────────────────────────────────── */
+.lb-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.lb-rank{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-size:.78rem;font-weight:700;background:var(--bg);color:var(--text-muted)}
+.lb-rank.top1{background:#ffd700;color:#fff}
+.lb-rank.top2{background:#c0c0c0;color:#fff}
+.lb-rank.top3{background:#cd7f32;color:#fff}
+.lb-alert{color:var(--danger);font-weight:700}
+.chart-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:.85rem}
+.chart-bar-label{min-width:60px;text-align:right;font-weight:600;font-size:.82rem}
+.chart-bar-track{flex:1;height:22px;background:var(--bg);border-radius:6px;overflow:hidden;display:flex}
+.chart-bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;justify-content:flex-end;padding:0 6px;font-size:.72rem;font-weight:700;color:#fff;min-width:0;transition:width .4s ease}
+.chart-bar-fill.tardy{background:var(--danger)}
+.chart-bar-fill.leave{background:var(--warning)}
+.chart-legend{display:flex;gap:16px;margin-bottom:12px;font-size:.82rem}
+.chart-legend span::before{content:'';display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:middle}
+.chart-legend .leg-tardy::before{background:var(--danger)}
+.chart-legend .leg-leave::before{background:var(--warning)}
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media(max-width:768px){
   .sidebar{transform:translateX(-100%)}
@@ -165,6 +215,8 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
   .stats-grid{grid-template-columns:1fr 1fr}
   .content{padding:22px 16px}
   .topbar{padding:0 18px}
+  .lb-grid{grid-template-columns:1fr}
+  .cal-cell{min-height:50px}
 }
 </style>
 </head>
@@ -176,15 +228,16 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
 
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-brand">IBSH Admin <span>Attendance System</span></div>
+  <div class="sidebar-brand">IBSH Admin <span>Leave System</span></div>
   <nav class="sidebar-nav" id="sidebarNav">
     <button class="active" data-section="dashboard"><span class="icon">&#127968;</span> Dashboard</button>
     <button data-section="leaves"><span class="icon">&#128196;</span> Leave Management</button>
     <button data-section="tardies"><span class="icon">&#9200;</span> Tardy Management</button>
     <button data-section="students"><span class="icon">&#128101;</span> Student Management</button>
+    <button data-section="stats"><span class="icon">&#128202;</span> Statistics</button>
     <button data-section="settings"><span class="icon">&#9881;</span> Settings</button>
   </nav>
-  <div class="sidebar-footer">IBSH &copy; 2026</div>
+  <div class="sidebar-footer">IBSH &copy; 2025</div>
 </aside>
 
 <!-- Main -->
@@ -199,12 +252,31 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
     ═══════════════════════════════════════════════════════════ -->
     <div class="section active" id="sec-dashboard">
       <p style="margin-bottom:16px;color:var(--text-secondary)">Today: <strong id="dashDate"></strong></p>
+
+      <!-- Reminders -->
+      <div class="reminder-grid" id="dashReminders"></div>
+
       <div class="stats-grid">
         <div class="stat-card"><div class="label">Total Students</div><div class="value" id="dashTotalStudents">0</div></div>
         <div class="stat-card" style="border-color:var(--warning)"><div class="label">Pending Leaves</div><div class="value" id="dashPendingLeaves">0</div></div>
         <div class="stat-card" style="border-color:var(--danger)"><div class="label">Today's Tardies</div><div class="value" id="dashTodayTardies">0</div></div>
         <div class="stat-card" style="border-color:var(--success)"><div class="label">Today's Leaves</div><div class="value" id="dashTodayLeaves">0</div></div>
       </div>
+
+      <!-- Calendar -->
+      <div class="card">
+        <div class="card-header"><h2>Monthly Calendar / 月曆總覽</h2></div>
+        <div class="card-body">
+          <div class="cal-nav">
+            <button onclick="calPrev()">&larr;</button>
+            <span class="cal-title" id="calTitle"></span>
+            <button onclick="calNext()">&rarr;</button>
+            <button class="btn btn-outline btn-sm" onclick="calToday()" style="margin-left:auto">Today</button>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header"><h2>Today's Late Arrivals</h2></div>
         <div class="card-body table-wrap" id="dashTardyTable"></div>
@@ -288,6 +360,37 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
           </div>
           <div class="table-wrap" id="studentTableWrap"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         SECTION: Statistics
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section" id="sec-stats">
+      <div class="card">
+        <div class="card-header">
+          <h2>Monthly Filter / 月份篩選</h2>
+          <div class="search-bar">
+            <input type="month" class="form-control" id="statsMonth" style="max-width:200px">
+            <button class="btn btn-primary btn-sm" onclick="refreshStats()">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="lb-grid">
+        <div class="card">
+          <div class="card-header"><h2>Tardy Leaderboard / 遲到排行榜</h2></div>
+          <div class="card-body table-wrap" id="tardyLeaderboard"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2>Leave Leaderboard / 請假排行榜</h2></div>
+          <div class="card-body table-wrap" id="leaveLeaderboard"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h2>Class Attendance Chart / 班級出缺勤統計</h2></div>
+        <div class="card-body" id="classChart"></div>
       </div>
     </div>
 
@@ -510,6 +613,7 @@ const navTitles = {
   students: 'Student Management (學生管理)',
   leaves: 'Leave Management (假單管理)',
   tardies: 'Tardy Management (遲到管理)',
+  stats: 'Statistics (統計分析)',
   settings: 'Settings (設定)',
 };
 
@@ -536,6 +640,7 @@ function refreshSection(name) {
     case 'students': refreshStudents(); break;
     case 'leaves': refreshLeaves(); break;
     case 'tardies': refreshTardies(); break;
+    case 'stats': refreshStats(); break;
     case 'settings': refreshSettings(); break;
   }
 }
@@ -548,6 +653,8 @@ function refreshDashboard() {
   $('#dashDate').textContent = d;
   $('#dashTotalStudents').textContent = AppDB.students().length;
   $('#dashPendingLeaves').textContent = AppDB.getPendingLeaves().length;
+  refreshReminders();
+  renderCalendar();
 
   const todayTardies = AppDB.getTardiesByDate(d);
   $('#dashTodayTardies').textContent = todayTardies.length;
@@ -1333,7 +1440,7 @@ function renderLeaveTable(containerId, list, duplicateIds, showAction) {
     $(`#${containerId}`).innerHTML = '<p style="color:var(--text-muted)">No records.</p>';
     return;
   }
-  let h = '<table><thead><tr><th>Class</th><th>Student</th><th>Type</th><th>From</th><th>To</th><th>Periods</th><th>Actions</th></tr></thead><tbody>';
+  let h = '<table><thead><tr><th>Class</th><th>Student</th><th>Type</th><th>From</th><th>To</th><th>Periods</th><th>Return</th><th>Actions</th></tr></thead><tbody>';
   list.forEach(l => {
     const isDup = duplicateIds.has(l.id);
     const rowStyle = isDup ? ' style="background:var(--warning-bg)"' : '';
@@ -1346,9 +1453,21 @@ function renderLeaveTable(containerId, list, duplicateIds, showAction) {
       actions += `<button class="btn btn-success btn-sm" onclick="approveLeave('${l.id}')">Approve</button>`;
     }
 
+    // Return confirmation (銷假)
+    const endDate = l.toDate || (l.endTime || '').slice(0, 10);
+    let returnCell = '-';
+    if (l.status === 'approved' && endDate && endDate <= today()) {
+      if (l.returnConfirmed) {
+        returnCell = `<span class="badge badge-approved">已銷假 ${escapeHtml(l.returnDate || '')}</span> <button class="btn btn-outline btn-sm" onclick="undoReturn('${l.id}')" title="Undo">↩</button>`;
+      } else {
+        returnCell = `<button class="btn btn-warning btn-sm" onclick="confirmReturn('${l.id}')">銷假</button>`;
+      }
+    }
+
     h += `<tr${rowStyle}><td>${escapeHtml(l.className)}</td><td>${escapeHtml(l.chineseName || l.englishName)}${dupBadge}</td><td>${escapeHtml(l.leaveType)}</td>
       <td>${escapeHtml((l.startTime||'').slice(0,16))}</td><td>${escapeHtml((l.endTime||'').slice(0,16))}</td>
       <td>${l.periods||'-'}</td>
+      <td style="white-space:nowrap">${returnCell}</td>
       <td style="white-space:nowrap">${actions}</td></tr>`;
   });
   h += '</tbody></table>';
@@ -1708,6 +1827,265 @@ function showConfirm(msg, onConfirm) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// DASHBOARD REMINDERS
+// ═══════════════════════════════════════════════════════════════════
+function refreshReminders() {
+  const d = today();
+  const cards = [];
+  const pending = AppDB.getPendingLeaves();
+
+  // 1. Overdue pending leaves (>2 days old)
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  const twoDaysAgoStr = twoDaysAgo.toISOString().slice(0, 10);
+  const overdue = pending.filter(l => (l.createdAt || '').slice(0, 10) <= twoDaysAgoStr);
+  if (overdue.length > 0) {
+    cards.push(`<div class="reminder-card danger">
+      <span class="ri-icon">&#9888;</span>
+      <div class="ri-body">
+        <div class="ri-title">Overdue Pending / 逾期未審核</div>
+        <div class="ri-desc">${overdue.length} leave(s) pending for over 2 days</div>
+      </div>
+      <div class="ri-count">${overdue.length}</div>
+    </div>`);
+  }
+
+  // 2. Leaves needing return confirmation (銷假)
+  const approved = AppDB.leave().filter(l => l.status === 'approved');
+  const needReturn = approved.filter(l => {
+    const endDate = l.toDate || (l.endTime || '').slice(0, 10);
+    return endDate && endDate <= d && !l.returnConfirmed;
+  });
+  if (needReturn.length > 0) {
+    cards.push(`<div class="reminder-card">
+      <span class="ri-icon">&#128203;</span>
+      <div class="ri-body">
+        <div class="ri-title">Pending Return / 待銷假</div>
+        <div class="ri-desc">${needReturn.length} student(s) have not confirmed return</div>
+      </div>
+      <div class="ri-count">${needReturn.length}</div>
+    </div>`);
+  }
+
+  // 3. Pending count
+  if (pending.length > 0) {
+    cards.push(`<div class="reminder-card info">
+      <span class="ri-icon">&#128196;</span>
+      <div class="ri-body">
+        <div class="ri-title">Pending Approval / 待審核</div>
+        <div class="ri-desc">${pending.length} leave request(s) awaiting review</div>
+      </div>
+      <div class="ri-count">${pending.length}</div>
+    </div>`);
+  }
+
+  $('#dashReminders').innerHTML = cards.length ? cards.join('') : '';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CALENDAR
+// ═══════════════════════════════════════════════════════════════════
+let _calYear, _calMonth;
+
+function calInit() {
+  const now = new Date();
+  _calYear = now.getFullYear();
+  _calMonth = now.getMonth();
+}
+
+function calPrev() { _calMonth--; if (_calMonth < 0) { _calMonth = 11; _calYear--; } renderCalendar(); }
+function calNext() { _calMonth++; if (_calMonth > 11) { _calMonth = 0; _calYear++; } renderCalendar(); }
+function calToday() { const n = new Date(); _calYear = n.getFullYear(); _calMonth = n.getMonth(); renderCalendar(); }
+
+function renderCalendar() {
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  $('#calTitle').textContent = `${months[_calMonth]} ${_calYear}`;
+
+  const firstDay = new Date(_calYear, _calMonth, 1).getDay();
+  const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
+  const d = today();
+
+  // Preload data for the month
+  const monthStart = `${_calYear}-${String(_calMonth + 1).padStart(2, '0')}-01`;
+  const monthEnd = `${_calYear}-${String(_calMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+  const monthTardies = AppDB.getTardiesByDateRange(monthStart, monthEnd);
+  const monthLeaves = AppDB.getLeavesByDateRange(monthStart, monthEnd);
+  const holidays = AppDB.holidays();
+
+  let h = '';
+  // Header row
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(day => {
+    h += `<div class="cal-head">${day}</div>`;
+  });
+
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) h += '<div class="cal-cell empty"></div>';
+
+  // Day cells
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${_calYear}-${String(_calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dow = new Date(_calYear, _calMonth, day).getDay();
+    const isToday = dateStr === d;
+    const isWeekend = dow === 0 || dow === 6;
+
+    // Check holiday/schoolday
+    let cellClass = 'cal-cell';
+    let isHol = false, isSchDay = false;
+    holidays.forEach(hol => {
+      const s = hol.startDate || hol.date || '';
+      const e = hol.endDate || s;
+      if (dateStr >= s && dateStr <= e) {
+        if (hol.type === 'schoolday') isSchDay = true;
+        else isHol = true;
+      }
+    });
+
+    if (isToday) cellClass += ' today';
+    if (isHol) cellClass += ' holiday';
+    else if (isSchDay) cellClass += ' schoolday';
+    else if (isWeekend) cellClass += ' weekend';
+
+    // Count tardies and leaves for this day
+    const dayTardies = monthTardies.filter(t => t.date === dateStr);
+    const dayLeaves = monthLeaves.filter(l => {
+      const ls = l.fromDate || (l.startTime || '').slice(0, 10);
+      const le = l.toDate || (l.endTime || '').slice(0, 10);
+      return dateStr >= ls && dateStr <= le;
+    });
+    const approvedLeaves = dayLeaves.filter(l => l.status === 'approved');
+    const pendingLeaves = dayLeaves.filter(l => l.status === 'pending');
+
+    let badges = '';
+    if (dayTardies.length) badges += `<span class="cal-badge tardy">遲${dayTardies.length}</span>`;
+    if (approvedLeaves.length) badges += `<span class="cal-badge approved">假${approvedLeaves.length}</span>`;
+    if (pendingLeaves.length) badges += `<span class="cal-badge leave">待${pendingLeaves.length}</span>`;
+    if (isHol) badges += '<span class="cal-badge tardy">休</span>';
+    if (isSchDay) badges += '<span class="cal-badge leave">補</span>';
+
+    h += `<div class="${cellClass}"><div class="cal-day">${day}</div><div class="cal-badges">${badges}</div></div>`;
+  }
+
+  $('#calGrid').innerHTML = h;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STATISTICS — LEADERBOARD & CLASS CHART
+// ═══════════════════════════════════════════════════════════════════
+function refreshStats() {
+  const monthVal = $('#statsMonth').value;
+  if (!monthVal) {
+    // Default to current month
+    const now = new Date();
+    $('#statsMonth').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+  const [year, month] = ($('#statsMonth').value).split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const from = `${year}-${String(month).padStart(2, '0')}-01`;
+  const to = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+  const tardies = AppDB.getTardiesByDateRange(from, to);
+  const leaves = AppDB.getLeavesByDateRange(from, to).filter(l => l.status !== 'rejected');
+
+  // — Tardy leaderboard —
+  renderLeaderboard('tardyLeaderboard', tardies, 'studentNo', 'Tardies / 遲到');
+  // — Leave leaderboard —
+  renderLeaderboard('leaveLeaderboard', leaves, 'studentNo', 'Leaves / 請假');
+  // — Class chart —
+  renderClassChart(tardies, leaves);
+}
+
+function renderLeaderboard(containerId, records, groupKey, label) {
+  const counts = {};
+  records.forEach(r => {
+    const key = r[groupKey] || 'unknown';
+    if (!counts[key]) counts[key] = { studentNo: r.studentNo, chineseName: r.chineseName, englishName: r.englishName, className: r.className, count: 0 };
+    counts[key].count++;
+  });
+
+  const sorted = Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 15);
+
+  if (sorted.length === 0) {
+    $(`#${containerId}`).innerHTML = `<p style="color:var(--text-muted)">No records this month.</p>`;
+    return;
+  }
+
+  let h = `<table><thead><tr><th>#</th><th>Class</th><th>Student</th><th>${escapeHtml(label)}</th></tr></thead><tbody>`;
+  sorted.forEach((s, i) => {
+    const rank = i + 1;
+    const rankClass = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
+    const alertClass = s.count >= 3 ? ' lb-alert' : '';
+    h += `<tr>
+      <td><span class="lb-rank ${rankClass}">${rank}</span></td>
+      <td>${escapeHtml(s.className)}</td>
+      <td>${escapeHtml(s.chineseName || s.englishName)}</td>
+      <td class="${alertClass}">${s.count}${s.count >= 3 ? ' ⚠' : ''}</td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  $(`#${containerId}`).innerHTML = h;
+}
+
+function renderClassChart(tardies, leaves) {
+  const classCounts = {};
+  const allStudents = AppDB.students();
+  const classes = AppDB.getClassList();
+
+  classes.forEach(cls => { classCounts[cls] = { tardy: 0, leave: 0 }; });
+  tardies.forEach(t => { if (classCounts[t.className]) classCounts[t.className].tardy++; });
+  leaves.forEach(l => { if (classCounts[l.className]) classCounts[l.className].leave++; });
+
+  const maxVal = Math.max(1, ...Object.values(classCounts).map(c => c.tardy + c.leave));
+
+  let h = '<div class="chart-legend"><span class="leg-tardy">Tardy / 遲到</span> <span class="leg-leave">Leave / 請假</span></div>';
+  classes.forEach(cls => {
+    const c = classCounts[cls];
+    if (c.tardy === 0 && c.leave === 0) return;
+    const tardyW = (c.tardy / maxVal * 100).toFixed(1);
+    const leaveW = (c.leave / maxVal * 100).toFixed(1);
+    h += `<div class="chart-bar-row">
+      <span class="chart-bar-label">${escapeHtml(cls)}</span>
+      <div class="chart-bar-track">
+        <div class="chart-bar-fill tardy" style="width:${tardyW}%">${c.tardy || ''}</div>
+        <div class="chart-bar-fill leave" style="width:${leaveW}%">${c.leave || ''}</div>
+      </div>
+    </div>`;
+  });
+
+  if (!classes.some(cls => classCounts[cls].tardy || classCounts[cls].leave)) {
+    h += '<p style="color:var(--text-muted)">No records this month.</p>';
+  }
+
+  $('#classChart').innerHTML = h;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LEAVE RETURN CONFIRMATION (銷假確認)
+// ═══════════════════════════════════════════════════════════════════
+async function confirmReturn(id) {
+  try {
+    await AppDB.updateLeave(id, { returnConfirmed: true, returnDate: today() });
+    toast('Return confirmed / 銷假完成');
+    refreshLeaves();
+    refreshDashboard();
+  } catch (err) {
+    console.error('[Admin] Failed to confirm return:', err);
+    toast(err.message || 'Failed to confirm return.', 'error');
+  }
+}
+
+async function undoReturn(id) {
+  try {
+    await AppDB.updateLeave(id, { returnConfirmed: false, returnDate: '' });
+    toast('Return confirmation undone / 已取消銷假');
+    refreshLeaves();
+    refreshDashboard();
+  } catch (err) {
+    console.error('[Admin] Failed to undo return:', err);
+    toast(err.message || 'Failed to undo return.', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════
 (async function boot() {
@@ -1725,6 +2103,7 @@ function showConfirm(msg, onConfirm) {
   $('#leaveFilterFrom').value = monthAgo.toISOString().slice(0, 10);
   $('#leaveFilterTo').value = d;
 
+  calInit();
   initGcalYearSelector();
   refreshDashboard();
 })();
